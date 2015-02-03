@@ -29,6 +29,25 @@ namespace gc {
 
 extern "C" inline void* gc_alloc(size_t bytes, GCKind kind_id) __attribute__((visibility("default")));
 extern "C" inline void* gc_alloc(size_t bytes, GCKind kind_id) {
+#if false
+  switch (kind_id) {
+  case GCKind::UNTRACKED:
+    break;
+  case GCKind::PYTHON:
+    printf ("XXX(toshok) gc_alloc(%zu,GCKind::PYTHON)\n", bytes);
+    break;
+  case GCKind::CONSERVATIVE:
+    printf ("XXX(toshok) gc_alloc(%zu,GCKind::CONSERVATIVE)\n", bytes);
+    break;
+  case GCKind::PRECISE:
+    printf ("XXX(toshok) gc_alloc(%zu,GCKind::PRECISE)\n", bytes);
+    break;
+  case GCKind::HIDDEN_CLASS:
+    printf ("XXX(toshok) gc_alloc(%zu,GCKind::HIDDEN_CLASS)\n", bytes);
+    break;
+  }
+#endif
+
     size_t alloc_bytes = bytes + sizeof(GCAllocation);
 
 #ifndef NVALGRIND

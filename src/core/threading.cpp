@@ -30,6 +30,7 @@
 #include "core/thread_utils.h"
 #include "core/util.h"
 #include "gc/collector.h"
+#include "pyston-sgen.h"
 
 namespace pyston {
 namespace threading {
@@ -402,6 +403,9 @@ static void* find_stack() {
 
 void registerMainThread() {
     LOCK_REGION(&threading_lock);
+
+    void* dummy;
+    sgen_thread_register(&main_thread_info, &dummy);
 
     current_threads[pthread_self()] = new ThreadStateInternal(find_stack(), pthread_self(), &cur_thread_state);
 

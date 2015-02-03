@@ -24,6 +24,7 @@
 #include "core/threading.h"
 #include "core/types.h"
 #include "gc/gc_alloc.h"
+#include "pyston-sgen.h"
 
 namespace pyston {
 
@@ -193,6 +194,11 @@ public:
     Box* callReprIC(Box* obj);
     bool callNonzeroIC(Box* obj);
 
+    ::GCVTable* instance_gc_vtable;
+    size_t *instance_gc_bitmap;
+    int instance_gc_bitmap_size;
+
+
     gcvisit_func gc_visit;
 
     // Offset of the HCAttrs object or 0 if there are no hcattrs.
@@ -222,9 +228,13 @@ public:
 
     void freeze();
 
-    BoxedClass(BoxedClass* base, gcvisit_func gc_visit, int attrs_offset, int instance_size, bool is_user_defined);
+    ::GCVTable* getInstanceGCVTable();
+
+    BoxedClass(BoxedClass* base, gcvisit_func gc_visit, int attrs_offset, int instance_size, bool is_user_defined, size_t* instance_gc_bitmap = (size_t*)-1, int instance_gc_bitmap_size = 0);
 
     DEFAULT_CLASS(type_cls);
+
+    static BoxedClassBitmap bitmap;
 };
 
 class BoxedHeapClass : public BoxedClass {
@@ -235,7 +245,9 @@ public:
     PyBufferProcs as_buffer;
     PyObject* ht_name, *ht_slots;
 
-    BoxedHeapClass(BoxedClass* base, gcvisit_func gc_visit, int attrs_offset, int instance_size, bool is_user_defined);
+    BoxedHeapClass(BoxedClass* base, gcvisit_func gc_visit, int attrs_offset, int instance_size, bool is_user_defined, size_t* instance_gc_bitmap = (size_t*)-1, int instance_gc_bitmap_size = 0);
+
+    static BoxedHeapClassBitmap bitmap;
 };
 
 static_assert(sizeof(pyston::Box) == sizeof(struct _object), "");
@@ -254,8 +266,7 @@ static_assert(offsetof(pyston::BoxedHeapClass, as_sequence) == offsetof(PyHeapTy
 static_assert(offsetof(pyston::BoxedHeapClass, as_buffer) == offsetof(PyHeapTypeObject, as_buffer), "");
 static_assert(sizeof(pyston::BoxedHeapClass) == sizeof(PyHeapTypeObject), "");
 
-
-class HiddenClass : public GCAllocated<gc::GCKind::HIDDEN_CLASS> {
+class HiddenClass {
 private:
     HiddenClass() {}
     HiddenClass(const HiddenClass* parent) : attr_offsets(parent->attr_offsets) {}
@@ -283,11 +294,13 @@ public:
     }
     HiddenClass* delAttrToMakeHC(const std::string& attr);
 
-    void gc_visit(GCVisitor* visitor) {
-        for (const auto& p : children) {
-            visitor->visit(p.second);
-        }
+    void* operator new(size_t size) __attribute__((visibility("default"))) {
+      return sgen_alloc_obj(HiddenClass::getInstanceGCVTable(), size);
     }
+
+    static GCVTable gc_vtable;
+
+    static GCVTable* getInstanceGCVTable();
 };
 
 class BoxedInt : public Box {
@@ -297,6 +310,8 @@ public:
     BoxedInt(int64_t n) __attribute__((visibility("default"))) : n(n) {}
 
     DEFAULT_CLASS(int_cls);
+
+    static BoxedIntBitmap bitmap;
 };
 
 class BoxedFloat : public Box {
@@ -306,6 +321,8 @@ public:
     BoxedFloat(double d) __attribute__((visibility("default"))) : d(d) {}
 
     DEFAULT_CLASS(float_cls);
+
+    static BoxedFloatBitmap bitmap;
 };
 
 class BoxedComplex : public Box {
@@ -316,6 +333,8 @@ public:
     BoxedComplex(double r, double i) __attribute__((visibility("default"))) : real(r), imag(i) {}
 
     DEFAULT_CLASS(complex_cls);
+
+    static BoxedComplexBitmap bitmap;
 };
 
 class BoxedBool : public BoxedInt {
@@ -323,6 +342,8 @@ public:
     BoxedBool(bool b) __attribute__((visibility("default"))) : BoxedInt(b ? 1 : 0) {}
 
     DEFAULT_CLASS(bool_cls);
+
+    static BoxedBoolBitmap bitmap;
 };
 
 class BoxedString : public Box {
@@ -335,10 +356,14 @@ public:
     BoxedString(const std::string& s) __attribute__((visibility("default"))) : s(s) {}
 
     DEFAULT_CLASS(str_cls);
+
+    static BoxedStringBitmap bitmap;
 };
 
 class BoxedUnicode : public Box {
+public:
     // TODO implementation
+    static BoxedUnicodeBitmap bitmap;
 };
 
 class BoxedInstanceMethod : public Box {
@@ -349,6 +374,8 @@ public:
     BoxedInstanceMethod(Box* obj, Box* func) __attribute__((visibility("default"))) : obj(obj), func(func) {}
 
     DEFAULT_CLASS(instancemethod_cls);
+
+    static BoxedInstanceMethodBitmap bitmap;
 };
 
 class GCdArray {
@@ -381,6 +408,8 @@ public:
     static const int INITIAL_CAPACITY;
 
     DEFAULT_CLASS(list_cls);
+
+    static BoxedListBitmap bitmap;
 };
 
 class BoxedTuple : public Box {
@@ -392,6 +421,8 @@ public:
     BoxedTuple(GCVector&& elts) __attribute__((visibility("default"))) : elts(std::move(elts)) {}
 
     DEFAULT_CLASS(tuple_cls);
+
+    static BoxedTupleBitmap bitmap;
 };
 extern "C" BoxedTuple* EmptyTuple;
 
@@ -406,6 +437,8 @@ public:
     : f(f), fname(fname), fmode(fmode), closed(false), softspace(false) {}
 
     DEFAULT_CLASS(file_cls);
+
+    static BoxedFileBitmap bitmap;
 };
 
 struct PyHasher {
@@ -436,6 +469,8 @@ public:
             return p->second;
         return NULL;
     }
+
+    static BoxedDictBitmap bitmap;
 };
 static_assert(sizeof(BoxedDict) == sizeof(PyDictObject), "");
 
@@ -457,6 +492,8 @@ public:
                   bool isGenerator = false);
 
     DEFAULT_CLASS(function_cls);
+
+    static BoxedFunctionBitmap bitmap;
 };
 
 class BoxedModule : public Box {
@@ -469,6 +506,8 @@ public:
     std::string name();
 
     DEFAULT_CLASS(module_cls);
+
+    static BoxedModuleBitmap bitmap;
 };
 
 class BoxedSlice : public Box {
@@ -509,6 +548,8 @@ public:
     BoxedMemberDescriptor(PyMemberDef* member) : type((MemberType)member->type), offset(member->offset) {}
 
     DEFAULT_CLASS(member_cls);
+
+    static BoxedMemberDescriptorBitmap bitmap;
 };
 
 class BoxedProperty : public Box {

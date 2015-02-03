@@ -67,6 +67,20 @@ bool IN_SHUTDOWN = false;
 #define SLICE_STOP_OFFSET ((char*)&(((BoxedSlice*)0x01)->stop) - (char*)0x1)
 #define SLICE_STEP_OFFSET ((char*)&(((BoxedSlice*)0x01)->step) - (char*)0x1)
 
+GCVTable HiddenClass::gc_vtable = { 0, 0, 0, 0 };
+GCVTable*
+HiddenClass::getInstanceGCVTable()
+{
+  if (gc_vtable.descriptor == 0) {
+    printf ("XXX(toshok) HiddenClass bitmap is wrong\n");
+    gsize bitmap = 0;
+    int num_bits = sizeof(HiddenClass) / 8;
+    gc_vtable.descriptor = (mword)mono_gc_make_descr_for_object(&bitmap, num_bits, sizeof(HiddenClass));
+    gc_vtable.instance_size = sizeof(HiddenClass);
+  }
+  return &gc_vtable;
+}
+      
 // Analogue of PyType_GenericAlloc (default tp_alloc), but should only be used for Pyston classes!
 PyObject* PystonType_GenericAlloc(BoxedClass* cls, Py_ssize_t nitems) noexcept {
     assert(cls);
@@ -94,13 +108,21 @@ PyObject* PystonType_GenericAlloc(BoxedClass* cls, Py_ssize_t nitems) noexcept {
     // Maybe we should only zero the extension memory?
     // I'm not sure we have the information at the moment, but when we were in Box::operator new()
     // we knew which memory was beyond C++ class.
-    void* mem = gc_alloc(size, gc::GCKind::PYTHON);
+    GCVTable* vtable = cls->getInstanceGCVTable();
+    assert (vtable->instance_size == size);
+
+    void* mem = sgen_alloc_obj (vtable, size);
+    //void* mem = sgen_alloc_obj_mature (vtable, size);
+
+    //printf ("allocated %zu bytes with sgen, %p[%p]\n", size, mem, vtable);
     RELEASE_ASSERT(mem, "");
 
     Box* rtn = static_cast<Box*>(mem);
 
     PyObject_Init(rtn, cls);
     assert(rtn->cls);
+
+    rtn->gc_vtable = vtable;
 
     return rtn;
 }
@@ -781,6 +803,10 @@ CLFunction* unboxRTFunction(Box* b) {
     return static_cast<BoxedFunction*>(b)->f;
 }
 
+struct AttrWrapperBitmap : public BoxBitmap {
+    AttrWrapperBitmap(size_t size);
+};
+
 // A dictionary-like wrapper around the attributes array.
 // Not sure if this will be enough to satisfy users who expect __dict__
 // or PyModule_GetDict to return real dicts.
@@ -788,10 +814,14 @@ class AttrWrapper : public Box {
 private:
     Box* b;
 
+  friend struct AttrWrapperBitmap;
+
 public:
     AttrWrapper(Box* b) : b(b) { assert(b->cls->instancesHaveHCAttrs()); }
 
     DEFAULT_CLASS(attrwrapper_cls);
+  
+  static AttrWrapperBitmap bitmap;
 
     static void gcHandler(GCVisitor* v, Box* b) {
         boxGCHandler(v, b);
@@ -915,6 +945,12 @@ public:
     }
 };
 
+AttrWrapperBitmap::AttrWrapperBitmap(size_t size) : BoxBitmap(size) {
+  addGCField(offsetof(AttrWrapper, b));
+}
+
+AttrWrapperBitmap AttrWrapper::bitmap (sizeof(AttrWrapper));
+
 Box* makeAttrWrapper(Box* b) {
     assert(b->cls->instancesHaveHCAttrs());
     return new AttrWrapper(b);
@@ -988,25 +1024,35 @@ void setupRuntime() {
 
     // We have to do a little dance to get object_cls and type_cls set up, since the normal
     // object-creation routines look at the class to see the allocation size.
-    void* mem = gc_alloc(sizeof(BoxedClass), gc::GCKind::PYTHON);
-    object_cls = ::new (mem) BoxedClass(NULL, &boxGCHandler, 0, sizeof(Box), false);
-    mem = gc_alloc(sizeof(BoxedHeapClass), gc::GCKind::PYTHON);
+
+    GCVTable* object_cls_vtable = (GCVTable*)calloc(sizeof(GCVTable), 1);
+    object_cls_vtable->descriptor = (mword)mono_gc_make_descr_for_object(BoxedClass::bitmap.gc_bitmap(), BoxedClass::bitmap.gc_bitmap_size(), sizeof(BoxedClass));
+    object_cls_vtable->instance_size = sizeof(BoxedClass);
+
+    void* mem = sgen_alloc_obj(object_cls_vtable, sizeof(BoxedClass));
+    object_cls = ::new (mem) BoxedClass(NULL, &boxGCHandler, 0, sizeof(Box), false, Box::bitmap.gc_bitmap(), Box::bitmap.gc_bitmap_size());
+
+    GCVTable* type_cls_vtable = (GCVTable*)calloc(sizeof(GCVTable), 1);
+    type_cls_vtable->descriptor = (mword)mono_gc_make_descr_for_object(BoxedHeapClass::bitmap.gc_bitmap(), BoxedHeapClass::bitmap.gc_bitmap_size(), sizeof(BoxedHeapClass));
+    type_cls_vtable->instance_size = sizeof(BoxedHeapClass);
+
+    mem = sgen_alloc_obj(type_cls_vtable, sizeof(BoxedHeapClass));
     type_cls = ::new (mem)
-        BoxedHeapClass(object_cls, &typeGCHandler, offsetof(BoxedClass, attrs), sizeof(BoxedHeapClass), false);
+      BoxedHeapClass(object_cls, &typeGCHandler, offsetof(BoxedClass, attrs), sizeof(BoxedHeapClass), false, BoxedHeapClass::bitmap.gc_bitmap(), BoxedHeapClass::bitmap.gc_bitmap_size());
     PyObject_Init(object_cls, type_cls);
     PyObject_Init(type_cls, type_cls);
 
-    none_cls = new BoxedHeapClass(object_cls, NULL, 0, sizeof(Box), false);
+    none_cls = new BoxedHeapClass(object_cls, NULL, 0, sizeof(Box), false, Box::bitmap.gc_bitmap(), Box::bitmap.gc_bitmap_size());
     None = new (none_cls) Box();
     assert(None->cls);
     gc::registerPermanentRoot(None);
 
     // You can't actually have an instance of basestring
-    basestring_cls = new BoxedHeapClass(object_cls, NULL, 0, sizeof(Box), false);
+    basestring_cls = new BoxedHeapClass(object_cls, NULL, 0, sizeof(Box), false, Box::bitmap.gc_bitmap(), Box::bitmap.gc_bitmap_size());
 
     // TODO we leak all the string data!
-    str_cls = new BoxedHeapClass(basestring_cls, NULL, 0, sizeof(BoxedString), false);
-    unicode_cls = new BoxedHeapClass(basestring_cls, NULL, 0, sizeof(BoxedUnicode), false);
+    str_cls = new BoxedHeapClass(basestring_cls, NULL, 0, sizeof(BoxedString), false, BoxedString::bitmap.gc_bitmap(), BoxedString::bitmap.gc_bitmap_size());
+    unicode_cls = new BoxedHeapClass(basestring_cls, NULL, 0, sizeof(BoxedUnicode), false, BoxedUnicode::bitmap.gc_bitmap(), BoxedUnicode::bitmap.gc_bitmap_size());
 
     // It wasn't safe to add __base__ attributes until object+type+str are set up, so do that now:
     type_cls->giveAttr("__base__", object_cls);
@@ -1016,38 +1062,38 @@ void setupRuntime() {
     object_cls->giveAttr("__base__", None);
 
 
-    tuple_cls = new BoxedHeapClass(object_cls, &tupleGCHandler, 0, sizeof(BoxedTuple), false);
+    tuple_cls = new BoxedHeapClass(object_cls, &tupleGCHandler, 0, sizeof(BoxedTuple), false, BoxedTuple::bitmap.gc_bitmap(), BoxedTuple::bitmap.gc_bitmap_size());
     EmptyTuple = new BoxedTuple({});
     gc::registerPermanentRoot(EmptyTuple);
 
 
-    module_cls = new BoxedHeapClass(object_cls, NULL, offsetof(BoxedModule, attrs), sizeof(BoxedModule), false);
+    module_cls = new BoxedHeapClass(object_cls, NULL, offsetof(BoxedModule, attrs), sizeof(BoxedModule), false, BoxedModule::bitmap.gc_bitmap(), BoxedModule::bitmap.gc_bitmap_size());
 
     // TODO it'd be nice to be able to do these in the respective setupType methods,
     // but those setup methods probably want access to these objects.
     // We could have a multi-stage setup process, but that seems overkill for now.
-    int_cls = new BoxedHeapClass(object_cls, NULL, 0, sizeof(BoxedInt), false);
-    bool_cls = new BoxedHeapClass(int_cls, NULL, 0, sizeof(BoxedBool), false);
-    complex_cls = new BoxedHeapClass(object_cls, NULL, 0, sizeof(BoxedComplex), false);
-    long_cls = new BoxedHeapClass(object_cls, &BoxedLong::gchandler, 0, sizeof(BoxedLong), false);
-    float_cls = new BoxedHeapClass(object_cls, NULL, 0, sizeof(BoxedFloat), false);
+    int_cls = new BoxedHeapClass(object_cls, NULL, 0, sizeof(BoxedInt), false, BoxedInt::bitmap.gc_bitmap(), BoxedInt::bitmap.gc_bitmap_size());
+    bool_cls = new BoxedHeapClass(int_cls, NULL, 0, sizeof(BoxedBool), false, BoxedBool::bitmap.gc_bitmap(), BoxedBool::bitmap.gc_bitmap_size());
+    complex_cls = new BoxedHeapClass(object_cls, NULL, 0, sizeof(BoxedComplex), false, BoxedComplex::bitmap.gc_bitmap(), BoxedComplex::bitmap.gc_bitmap_size());
+    long_cls = new BoxedHeapClass(object_cls, &BoxedLong::gchandler, 0, sizeof(BoxedLong), false, BoxedLong::bitmap.gc_bitmap(), BoxedLong::bitmap.gc_bitmap_size());
+    float_cls = new BoxedHeapClass(object_cls, NULL, 0, sizeof(BoxedFloat), false, BoxedFloat::bitmap.gc_bitmap(), BoxedFloat::bitmap.gc_bitmap_size());
     function_cls = new BoxedHeapClass(object_cls, &functionGCHandler, offsetof(BoxedFunction, attrs),
-                                      sizeof(BoxedFunction), false);
+                                      sizeof(BoxedFunction), false, BoxedFunction::bitmap.gc_bitmap(), BoxedFunction::bitmap.gc_bitmap_size());
     instancemethod_cls
-        = new BoxedHeapClass(object_cls, &instancemethodGCHandler, 0, sizeof(BoxedInstanceMethod), false);
-    list_cls = new BoxedHeapClass(object_cls, &listGCHandler, 0, sizeof(BoxedList), false);
+      = new BoxedHeapClass(object_cls, &instancemethodGCHandler, 0, sizeof(BoxedInstanceMethod), false, BoxedInstanceMethod::bitmap.gc_bitmap(), BoxedInstanceMethod::bitmap.gc_bitmap_size());
+    list_cls = new BoxedHeapClass(object_cls, &listGCHandler, 0, sizeof(BoxedList), false, BoxedList::bitmap.gc_bitmap(), BoxedList::bitmap.gc_bitmap_size());
     slice_cls = new BoxedHeapClass(object_cls, &sliceGCHandler, 0, sizeof(BoxedSlice), false);
-    dict_cls = new BoxedHeapClass(object_cls, &dictGCHandler, 0, sizeof(BoxedDict), false);
-    file_cls = new BoxedHeapClass(object_cls, NULL, 0, sizeof(BoxedFile), false);
+    dict_cls = new BoxedHeapClass(object_cls, &dictGCHandler, 0, sizeof(BoxedDict), false, BoxedDict::bitmap.gc_bitmap(), BoxedDict::bitmap.gc_bitmap_size());
+    file_cls = new BoxedHeapClass(object_cls, NULL, 0, sizeof(BoxedFile), false, BoxedFile::bitmap.gc_bitmap(), BoxedFile::bitmap.gc_bitmap_size());
     set_cls = new BoxedHeapClass(object_cls, &setGCHandler, 0, sizeof(BoxedSet), false);
     frozenset_cls = new BoxedHeapClass(object_cls, &setGCHandler, 0, sizeof(BoxedSet), false);
-    member_cls = new BoxedHeapClass(object_cls, NULL, 0, sizeof(BoxedMemberDescriptor), false);
+    member_cls = new BoxedHeapClass(object_cls, NULL, 0, sizeof(BoxedMemberDescriptor), false, BoxedMemberDescriptor::bitmap.gc_bitmap(), BoxedMemberDescriptor::bitmap.gc_bitmap_size());
     closure_cls
         = new BoxedHeapClass(object_cls, &closureGCHandler, offsetof(BoxedClosure, attrs), sizeof(BoxedClosure), false);
     property_cls = new BoxedHeapClass(object_cls, &propertyGCHandler, 0, sizeof(BoxedProperty), false);
     staticmethod_cls = new BoxedHeapClass(object_cls, &staticmethodGCHandler, 0, sizeof(BoxedStaticmethod), false);
     classmethod_cls = new BoxedHeapClass(object_cls, &classmethodGCHandler, 0, sizeof(BoxedClassmethod), false);
-    attrwrapper_cls = new BoxedHeapClass(object_cls, &AttrWrapper::gcHandler, 0, sizeof(AttrWrapper), false);
+    attrwrapper_cls = new BoxedHeapClass(object_cls, &AttrWrapper::gcHandler, 0, sizeof(AttrWrapper), false, AttrWrapper::bitmap.gc_bitmap(), AttrWrapper::bitmap.gc_bitmap_size());
 
     STR = typeFromClass(str_cls);
     BOXED_INT = typeFromClass(int_cls);
@@ -1063,6 +1109,29 @@ void setupRuntime() {
     BOXED_TUPLE = typeFromClass(tuple_cls);
     LONG = typeFromClass(long_cls);
     BOXED_COMPLEX = typeFromClass(complex_cls);
+
+    //#define DUMP_CLS(x) printf (#x " = %p\n", x)
+    #define DUMP_CLS(x)
+
+    DUMP_CLS(int_cls);
+    DUMP_CLS(bool_cls);
+    DUMP_CLS(complex_cls);
+    DUMP_CLS(long_cls);
+    DUMP_CLS(float_cls);
+    DUMP_CLS(function_cls);
+    DUMP_CLS(instancemethod_cls);
+    DUMP_CLS(list_cls);
+    DUMP_CLS(slice_cls);
+    DUMP_CLS(dict_cls);
+    DUMP_CLS(file_cls);
+    DUMP_CLS(set_cls);
+    DUMP_CLS(frozenset_cls);
+    DUMP_CLS(member_cls);
+    DUMP_CLS(closure_cls);
+    DUMP_CLS(property_cls);
+    DUMP_CLS(staticmethod_cls);
+    DUMP_CLS(classmethod_cls);
+    DUMP_CLS(attrwrapper_cls);
 
     object_cls->giveAttr("__name__", boxStrConstant("object"));
     object_cls->giveAttr("__new__", new BoxedFunction(boxRTFunction((void*)objectNew, UNKNOWN, 1, 0, true, false)));
@@ -1168,16 +1237,21 @@ void setupRuntime() {
 
     setupCAPI();
 
-    PyType_Ready(&PyCapsule_Type);
+    // XXX(toshok)
+    //PyType_Ready(&PyCapsule_Type);
 
     initerrno();
+    // XXX(toshok)
+#if false
     init_sha();
     init_sha256();
     init_sha512();
     init_md5();
     init_random();
     init_sre();
+#endif
     initmath();
+#if false
     initoperator();
     initbinascii();
     initpwd();
@@ -1191,6 +1265,7 @@ void setupRuntime() {
     initsignal();
     initselect();
     initfcntl();
+#endif
 
     setupSysEnd();
 

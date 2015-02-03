@@ -120,6 +120,9 @@ std::vector<void**> TraceStack::free_chunks;
 
 static std::vector<void*> roots;
 void registerPermanentRoot(void* obj) {
+    // XXX(toshok)
+    return;
+
     assert(global_heap.getAllocationFromInteriorPointer(obj));
     roots.push_back(obj);
 
@@ -151,6 +154,7 @@ bool isNonheapRoot(void* p) {
 }
 
 bool isValidGCObject(void* p) {
+    return true;
     return isNonheapRoot(p) || (global_heap.getAllocationFromInteriorPointer(p)->user_data == p);
 }
 
@@ -272,8 +276,7 @@ static void markPhase() {
                 cls->gc_visit(&visitor, b);
             }
         } else if (kind_id == GCKind::HIDDEN_CLASS) {
-            HiddenClass* hcls = reinterpret_cast<HiddenClass*>(p);
-            hcls->gc_visit(&visitor);
+	  abort();
         } else {
             RELEASE_ASSERT(0, "Unhandled kind: %d", (int)kind_id);
         }
@@ -301,6 +304,8 @@ void disableGC() {
 
 static int ncollections = 0;
 void runCollection() {
+  return;
+
     static StatCounter sc("gc_collections");
     sc.log();
 

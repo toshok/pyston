@@ -47,6 +47,7 @@
 #include "runtime/long.h"
 #include "runtime/types.h"
 #include "runtime/util.h"
+#include "pyston-sgen.h"
 
 #define BOX_CLS_OFFSET ((char*)&(((Box*)0x01)->cls) - (char*)0x1)
 #define HCATTRS_HCLS_OFFSET ((char*)&(((HCAttrs*)0x01)->hcls) - (char*)0x1)
@@ -381,8 +382,8 @@ void BoxedClass::freeze() {
 }
 
 BoxedClass::BoxedClass(BoxedClass* base, gcvisit_func gc_visit, int attrs_offset, int instance_size,
-                       bool is_user_defined)
-    : BoxVar(0), gc_visit(gc_visit), attrs_offset(attrs_offset), is_constant(false), is_user_defined(is_user_defined),
+                       bool is_user_defined, size_t* instance_gc_bitmap, int instance_gc_bitmap_size)
+  : BoxVar(0), instance_gc_bitmap(instance_gc_bitmap), instance_gc_bitmap_size(instance_gc_bitmap_size), gc_visit(gc_visit), attrs_offset(attrs_offset), is_constant(false), is_user_defined(is_user_defined),
       is_pyston_class(true) {
 
     // Zero out the CPython tp_* slots:
@@ -439,13 +440,34 @@ BoxedClass::BoxedClass(BoxedClass* base, gcvisit_func gc_visit, int attrs_offset
         assert(attrs_offset % sizeof(void*) == 0); // Not critical I suppose, but probably signals a bug
     }
 
+    instance_gc_vtable = NULL;
+
     if (!is_user_defined)
         gc::registerPermanentRoot(this);
 }
 
+::GCVTable*
+BoxedClass::getInstanceGCVTable() {
+  if (instance_gc_bitmap == (size_t*)-1) {
+    printf("**** class of type %s has no gc bitmap\n", tp_name);
+    instance_gc_bitmap = Box::bitmap.gc_bitmap();
+    instance_gc_bitmap_size = Box::bitmap.gc_bitmap_size();
+  }
+  if (instance_gc_vtable)
+    return instance_gc_vtable;
+
+  instance_gc_vtable = (::GCVTable*)malloc(sizeof(::GCVTable));
+  instance_gc_vtable->descriptor = (mword)mono_gc_make_descr_for_object(instance_gc_bitmap, instance_gc_bitmap_size, (size_t)tp_basicsize);
+  instance_gc_vtable->instance_size = (size_t)tp_basicsize;
+
+  //printf ("creating instance gc vtable for %p (sz = %zu), rv = %p\n", this, tp_basicsize, instance_gc_vtable);
+
+  return instance_gc_vtable;
+}
+
 BoxedHeapClass::BoxedHeapClass(BoxedClass* base, gcvisit_func gc_visit, int attrs_offset, int instance_size,
-                               bool is_user_defined)
-    : BoxedClass(base, gc_visit, attrs_offset, instance_size, is_user_defined), ht_name(NULL), ht_slots(NULL) {
+                               bool is_user_defined, size_t* instance_gc_bitmap, int instance_gc_bitmap_size)
+  : BoxedClass(base, gc_visit, attrs_offset, instance_size, is_user_defined, instance_gc_bitmap, instance_gc_bitmap_size), ht_name(NULL), ht_slots(NULL) {
 
     tp_as_number = &as_number;
     tp_as_mapping = &as_mapping;

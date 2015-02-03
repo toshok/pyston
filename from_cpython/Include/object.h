@@ -82,11 +82,13 @@ whose size is determined when the object is allocated.
 // Pyston change: removed ob_refcnt
 #define PyObject_HEAD                   \
     _PyObject_HEAD_EXTRA                \
+    void* gc_info;			\
     struct _typeobject *ob_type;
 
 // Pyston change: removed '1', the initial refcount
 #define PyObject_HEAD_INIT(type)        \
     _PyObject_EXTRA_INIT                \
+    0,					\
     type,
 
 #define PyVarObject_HEAD_INIT(type, size)       \
@@ -456,6 +458,9 @@ struct _typeobject {
     void* _hcattrs;
     char _dep_getattrs[56]; // FIXME: this is hardcoding the size of this particular implementation of std::unordered_map
     char _ics[32];
+    void* instance_gcvtable;
+    size_t instance_gc_bitmap;
+    int instance_gc_bitmap_size;
     void* _gcvisit_func;
     int _attrs_offset;
     bool _flags[2];

@@ -169,6 +169,10 @@ void prependToSysPath(const std::string& path) {
              boxInt(0), new BoxedString(path), NULL, NULL, NULL);
 }
 
+struct BoxedSysFlagsBitmap : public BoxBitmap {
+  BoxedSysFlagsBitmap(size_t size);
+};
+
 static BoxedClass* sys_flags_cls;
 class BoxedSysFlags : public Box {
 public:
@@ -196,7 +200,18 @@ public:
     static Box* __new__(Box* cls, Box* args, Box* kwargs) {
         raiseExcHelper(TypeError, "cannot create 'sys.flags' instances");
     }
+
+  static BoxedSysFlagsBitmap bitmap;
 };
+
+BoxedSysFlagsBitmap::BoxedSysFlagsBitmap(size_t size) : BoxBitmap(size) {
+  addGCField(offsetof(BoxedSysFlags, division_warning));
+  addGCField(offsetof(BoxedSysFlags, bytes_warning));
+  addGCField(offsetof(BoxedSysFlags, no_user_site));
+}
+
+BoxedSysFlagsBitmap BoxedSysFlags::bitmap (sizeof(BoxedSysFlags));
+
 
 static std::string generateVersionString() {
     std::ostringstream oss;
@@ -254,7 +269,7 @@ void setupSys() {
 
     sys_module->giveAttr("maxint", boxInt(PYSTON_INT_MAX));
 
-    sys_flags_cls = new BoxedHeapClass(object_cls, BoxedSysFlags::gcHandler, 0, sizeof(BoxedSysFlags), false);
+    sys_flags_cls = new BoxedHeapClass(object_cls, BoxedSysFlags::gcHandler, 0, sizeof(BoxedSysFlags), false, BoxedSysFlags::bitmap.gc_bitmap(), BoxedSysFlags::bitmap.gc_bitmap_size());
     sys_flags_cls->giveAttr("__name__", boxStrConstant("flags"));
     sys_flags_cls->giveAttr("__new__",
                             new BoxedFunction(boxRTFunction((void*)BoxedSysFlags::__new__, UNKNOWN, 1, 0, true, true)));

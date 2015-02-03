@@ -14,7 +14,7 @@ USE_DISTCC := 0
 ENABLE_VALGRIND := 0
 
 GDB := gdb
-GCC_DIR := $(DEPS_DIR)/gcc-4.8.2-install
+GCC_DIR := /usr
 GTEST_DIR := $(DEPS_DIR)/gtest-1.7.0
 
 USE_DEBUG_LIBUNWIND := 0
@@ -168,6 +168,9 @@ COMMON_CXXFLAGS += -DDEFAULT_PYTHON_MAJOR_VERSION=$(PYTHON_MAJOR_VERSION) -DDEFA
 COMMON_LDFLAGS := -B$(TOOLS_DIR)/build_system -L/usr/local/lib -lpthread -lm -lunwind -llzma -L$(DEPS_DIR)/gcc-4.8.2-install/lib64 -lreadline -lgmp
 COMMON_LDFLAGS += $(DEPS_DIR)/pypa-install/lib/libpypa.a
 
+COMMON_CXXFLAGS += -I$(DEPS_DIR)/simple-sgen-client -I$(DEPS_DIR)/simple-sgen-client/mono -I$(DEPS_DIR)/simple-sgen-client/mono/eglib/src -DHAVE_SGEN_GC -DSGEN_CLIENT_HEADER=\"simple-client.h\" -DSGEN_WITHOUT_MONO
+COMMON_LDFLAGS += $(DEPS_DIR)/simple-sgen-client/libsgen.a
+
 # Conditionally add libtinfo if available - otherwise nothing will be added
 COMMON_LDFLAGS += `pkg-config tinfo 2>/dev/null && pkg-config tinfo --libs || echo ""`
 
@@ -176,7 +179,7 @@ COMMON_LDFLAGS += `pkg-config tinfo 2>/dev/null && pkg-config tinfo --libs || ec
 COMMON_LDFLAGS += -Wl,-E
 
 # We get multiple shared libraries (libstdc++, libgcc_s) from the gcc installation:
-COMMON_LDFLAGS += -Wl,-rpath $(GCC_DIR)/lib64
+COMMON_LDFLAGS += -Wl,-rpath $(GCC_DIR)/lib
 
 ifneq ($(USE_DEBUG_LIBUNWIND),0)
 	COMMON_LDFLAGS += -L$(DEPS_DIR)/libunwind-trunk-debug-install/lib

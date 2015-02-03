@@ -35,12 +35,18 @@ struct wrapper_def {
 
 extern BoxedClass* capifunc_cls, *wrapperdescr_cls, *wrapperobject_cls;
 
+struct BoxedCApiFunctionBitmap : public BoxBitmap {
+  BoxedCApiFunctionBitmap(size_t size);
+};
+
 class BoxedCApiFunction : public Box {
 private:
     int ml_flags;
     Box* passthrough;
     const char* name;
     PyCFunction func;
+
+    friend struct BoxedCApiFunctionBitmap;
 
 public:
     BoxedCApiFunction(int ml_flags, Box* passthrough, const char* name, PyCFunction func)
@@ -82,6 +88,12 @@ public:
         assert(rtn && "should have set + thrown an exception!");
         return rtn;
     }
+
+    static BoxedCApiFunctionBitmap bitmap;
+};
+
+struct BoxedWrapperDescriptorBitmap : BoxBitmap {
+  BoxedWrapperDescriptorBitmap(size_t size);
 };
 
 class BoxedWrapperDescriptor : public Box {
@@ -95,6 +107,8 @@ public:
     DEFAULT_CLASS(wrapperdescr_cls);
 
     static Box* __get__(BoxedWrapperDescriptor* self, Box* inst, Box* owner);
+
+    static BoxedWrapperDescriptorBitmap bitmap;
 };
 
 class BoxedWrapperObject : public Box {

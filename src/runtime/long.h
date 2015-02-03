@@ -35,6 +35,8 @@ public:
     static void gchandler(GCVisitor* v, Box* b);
 
     DEFAULT_CLASS(long_cls);
+
+    static BoxedLongBitmap bitmap;
 };
 
 extern "C" Box* createLong(const std::string* s);

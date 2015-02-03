@@ -75,7 +75,7 @@ public:
         friend class Bitmap<N>;
 
     public:
-        void reset() { next_to_check = 0; }
+        void reset(int idx) { next_to_check = idx; }
     };
 
     bool isSet(int idx) { return (data[idx / 64] >> (idx % 64)) & 1; }
@@ -90,6 +90,7 @@ public:
         uint64_t mask = data[sc.next_to_check];
 
         if (unlikely(mask == 0L)) {
+#if true
             while (true) {
                 sc.next_to_check++;
                 if (sc.next_to_check == N / 64) {
@@ -101,7 +102,23 @@ public:
                     break;
                 }
             }
+#else
+	    int start = sc.next_to_check++;
+	    int found = -1;
+	    while (start != sc.next_to_check) {
+	      mask = data[sc.next_to_check];
+	      if (likely(mask != 0L)) {
+		break;
+	      }
+	      sc.next_to_check = (sc.next_to_check + 1) % (N / 64);
+	    }
+	    if (start == sc.next_to_check) {
+	      printf ("block full\n");
+	      return -1;
+	    }
+#endif
         }
+	
 
         int i = sc.next_to_check;
 

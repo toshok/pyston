@@ -39,6 +39,7 @@
 #include "core/util.h"
 #include "runtime/objmodel.h"
 #include "runtime/types.h"
+#include "pyston-sgen.h"
 
 
 #ifndef GITREV
@@ -92,6 +93,8 @@ int main(int argc, char** argv) {
     }
 
     const char* fn = NULL;
+
+    sgen_gc_init();
 
     threading::registerMainThread();
     threading::acquireGLRead();

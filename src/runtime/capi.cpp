@@ -65,6 +65,18 @@ BoxedClass* capifunc_cls;
 
 BoxedClass* wrapperdescr_cls, *wrapperobject_cls;
 
+BoxedCApiFunctionBitmap::BoxedCApiFunctionBitmap(size_t size) : BoxBitmap(size) {
+  addGCField(offsetof(BoxedCApiFunction, passthrough));
+}
+
+BoxedCApiFunctionBitmap BoxedCApiFunction::bitmap (sizeof(BoxedCApiFunction));
+
+BoxedWrapperDescriptorBitmap::BoxedWrapperDescriptorBitmap(size_t size) : BoxBitmap(size) {
+  addGCField(offsetof(BoxedWrapperDescriptor, type));
+}
+
+BoxedWrapperDescriptorBitmap BoxedWrapperDescriptor::bitmap (sizeof(BoxedWrapperDescriptor));
+
 Box* BoxedWrapperDescriptor::__get__(BoxedWrapperDescriptor* self, Box* inst, Box* owner) {
     RELEASE_ASSERT(self->cls == wrapperdescr_cls, "");
 
@@ -1442,7 +1454,7 @@ BoxedModule* importTestExtension(const std::string& name) {
 }
 
 void setupCAPI() {
-    capifunc_cls = new BoxedHeapClass(object_cls, NULL, 0, sizeof(BoxedCApiFunction), false);
+    capifunc_cls = new BoxedHeapClass(object_cls, NULL, 0, sizeof(BoxedCApiFunction), false, BoxedCApiFunction::bitmap.gc_bitmap(), BoxedCApiFunction::bitmap.gc_bitmap_size());
     capifunc_cls->giveAttr("__name__", boxStrConstant("capifunc"));
 
     capifunc_cls->giveAttr("__repr__",
@@ -1461,7 +1473,7 @@ void setupCAPI() {
                                                                      0, true, true)));
     method_cls->freeze();
 
-    wrapperdescr_cls = new BoxedHeapClass(object_cls, NULL, 0, sizeof(BoxedWrapperDescriptor), false);
+    wrapperdescr_cls = new BoxedHeapClass(object_cls, NULL, 0, sizeof(BoxedWrapperDescriptor), false, BoxedWrapperDescriptor::bitmap.gc_bitmap(), BoxedWrapperDescriptor::bitmap.gc_bitmap_size());
     wrapperdescr_cls->giveAttr("__name__", boxStrConstant("wrapper_descriptor"));
     wrapperdescr_cls->giveAttr("__get__",
                                new BoxedFunction(boxRTFunction((void*)BoxedWrapperDescriptor::__get__, UNKNOWN, 3)));

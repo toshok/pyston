@@ -35,7 +35,7 @@ namespace pyston {
 namespace gc {
 
 static unsigned bytesAllocatedSinceCollection;
-static __thread unsigned thread_bytesAllocatedSinceCollection;
+  static /*__thread*/ unsigned thread_bytesAllocatedSinceCollection;
 #define ALLOCBYTES_PER_COLLECTION 10000000
 
 void _collectIfNeeded(size_t bytes) {
@@ -52,7 +52,7 @@ void _collectIfNeeded(size_t bytes) {
             // threading::GLPromoteRegion _lock;
             // runCollection();
 
-            threading::GLPromoteRegion _lock;
+            //threading::GLPromoteRegion _lock;
             if (bytesAllocatedSinceCollection >= ALLOCBYTES_PER_COLLECTION) {
                 runCollection();
                 bytesAllocatedSinceCollection = 0;
@@ -148,7 +148,6 @@ static Block* alloc_block(uint64_t size, Block** prev) {
 
     // Don't think I need to do this:
     rtn->isfree.setAllZero();
-    rtn->next_to_check.reset();
 
     int num_objects = rtn->numObjects();
     int num_lost = rtn->minObjIndex();
@@ -157,6 +156,7 @@ static Block* alloc_block(uint64_t size, Block** prev) {
         rtn->isfree.set(i);
         // printf("%d %d\n", idx, bit);
     }
+    rtn->next_to_check.reset(rtn->minObjIndex());
 
     // printf("%d %d %d\n", num_objects, num_lost, atoms_per_object);
     // for (int i =0; i < BITFIELD_ELTS; i++) {
@@ -305,6 +305,8 @@ static void _doFree(GCAllocation* al) {
 }
 
 void Heap::free(GCAllocation* al) {
+  return;
+
     _doFree(al);
 
     if (large_arena.contains(al)) {

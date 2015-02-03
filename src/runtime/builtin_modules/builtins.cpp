@@ -623,11 +623,24 @@ Box* exceptionNew1(BoxedClass* cls) {
     return exceptionNew(cls, EmptyTuple);
 }
 
+struct BoxedExceptionBitmap : public BoxBitmap {
+    BoxedExceptionBitmap(size_t size);
+};
+
 class BoxedException : public Box {
 public:
     HCAttrs attrs;
     BoxedException() {}
+
+    static BoxedExceptionBitmap bitmap;
 };
+
+BoxedExceptionBitmap::BoxedExceptionBitmap(size_t size) : BoxBitmap(size) {
+  // XXX(toshok) attrs?
+}
+
+BoxedExceptionBitmap BoxedException::bitmap (sizeof(BoxedException));
+
 
 Box* exceptionNew2(BoxedClass* cls, Box* message) {
     return exceptionNew(cls, new BoxedTuple({ message }));
@@ -676,7 +689,7 @@ static BoxedClass* makeBuiltinException(BoxedClass* base, const char* name, int 
     if (size == 0)
         size = base->tp_basicsize;
 
-    BoxedClass* cls = new BoxedHeapClass(base, NULL, offsetof(BoxedException, attrs), size, false);
+    BoxedClass* cls = new BoxedHeapClass(base, NULL, offsetof(BoxedException, attrs), size, false, BoxedException::bitmap.gc_bitmap(), BoxedException::bitmap.gc_bitmap_size());
     cls->giveAttr("__name__", boxStrConstant(name));
     cls->giveAttr("__module__", boxStrConstant("exceptions"));
 
@@ -991,7 +1004,7 @@ void setupBuiltins() {
 
     builtins_module->giveAttr("print", new BoxedFunction(boxRTFunction((void*)print, NONE, 0, 0, true, true)));
 
-    notimplemented_cls = new BoxedHeapClass(object_cls, NULL, 0, sizeof(Box), false);
+    notimplemented_cls = new BoxedHeapClass(object_cls, NULL, 0, sizeof(Box), false, Box::bitmap.gc_bitmap(), Box::bitmap.gc_bitmap_size());
     notimplemented_cls->giveAttr("__name__", boxStrConstant("NotImplementedType"));
     notimplemented_cls->giveAttr("__repr__", new BoxedFunction(boxRTFunction((void*)notimplementedRepr, STR, 1)));
     notimplemented_cls->freeze();

@@ -29,12 +29,15 @@
 #include "core/common.h"
 #include "core/stats.h"
 #include "core/stringpool.h"
+#include "gc/bitmaps.h"
 
 namespace llvm {
 class Function;
 class Type;
 class Value;
 }
+
+struct GCVTable;
 
 namespace pyston {
 
@@ -401,6 +404,8 @@ public:
     void* operator new(size_t size, BoxedClass* cls) __attribute__((visibility("default")));
     void operator delete(void* ptr) __attribute__((visibility("default"))) { abort(); }
 
+    ::GCVTable* gc_vtable;
+
     // Note: cls gets initialized in the new() function.
     BoxedClass* cls;
 
@@ -424,6 +429,8 @@ public:
     bool nonzeroIC();
     Box* hasnextOrNullIC();
     Box* nextIC();
+
+    static BoxBitmap bitmap;
 };
 static_assert(offsetof(Box, cls) == offsetof(struct _object, ob_type), "");
 
@@ -441,6 +448,8 @@ public:
     Py_ssize_t ob_size;
 
     BoxVar(Py_ssize_t ob_size) : ob_size(ob_size) {}
+
+    static BoxVarBitmap bitmap;
 };
 static_assert(offsetof(BoxVar, ob_size) == offsetof(struct _varobject, ob_size), "");
 
