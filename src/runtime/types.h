@@ -150,10 +150,15 @@ public:
         size_t to_allocate = n * sizeof(value_type);
         // assert(to_allocate < (1<<16));
 
-        return reinterpret_cast<pointer>(gc_alloc(to_allocate, gc::GCKind::CONSERVATIVE));
+	void* ptr = calloc(to_allocate, 1);
+	GC_REGISTER_CONSERVATIVE_RANGE(ptr, to_allocate);
+        return reinterpret_cast<pointer>(ptr);
     }
 
-    void deallocate(pointer p, size_t n) { gc::gc_free(p); }
+    void deallocate(pointer p, size_t n) {
+      GC_DEREGISTER_CONSERVATIVE_RANGE(p);
+      free(p);
+    }
 
     // I would never be able to come up with this on my own:
     // http://en.cppreference.com/w/cpp/memory/allocator/construct
@@ -281,6 +286,7 @@ public:
         return new HiddenClass();
     }
 
+    ::GCVTable* gc_vtable;
     std::unordered_map<std::string, int> attr_offsets;
     std::unordered_map<std::string, HiddenClass*> children;
 
@@ -298,7 +304,7 @@ public:
       return sgen_alloc_obj(HiddenClass::getInstanceGCVTable(), size);
     }
 
-    static GCVTable gc_vtable;
+    static GCVTable instance_gc_vtable;
 
     static GCVTable* getInstanceGCVTable();
 };

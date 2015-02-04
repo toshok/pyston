@@ -34,6 +34,7 @@
 #include "runtime/objmodel.h"
 #include "runtime/set.h"
 #include "runtime/super.h"
+#include "pyston-sgen.h"
 
 extern "C" void initerrno();
 extern "C" void init_sha();
@@ -67,18 +68,18 @@ bool IN_SHUTDOWN = false;
 #define SLICE_STOP_OFFSET ((char*)&(((BoxedSlice*)0x01)->stop) - (char*)0x1)
 #define SLICE_STEP_OFFSET ((char*)&(((BoxedSlice*)0x01)->step) - (char*)0x1)
 
-GCVTable HiddenClass::gc_vtable = { 0, 0, 0, 0 };
+GCVTable HiddenClass::instance_gc_vtable = { 0, 0 };
 GCVTable*
 HiddenClass::getInstanceGCVTable()
 {
-  if (gc_vtable.descriptor == 0) {
-    printf ("XXX(toshok) HiddenClass bitmap is wrong\n");
+  if (instance_gc_vtable.descriptor == 0) {
+    //printf ("XXX(toshok) HiddenClass bitmap is wrong\n");
     gsize bitmap = 0;
     int num_bits = sizeof(HiddenClass) / 8;
-    gc_vtable.descriptor = (mword)mono_gc_make_descr_for_object(&bitmap, num_bits, sizeof(HiddenClass));
-    gc_vtable.instance_size = sizeof(HiddenClass);
+    instance_gc_vtable.descriptor = (mword)mono_gc_make_descr_for_object(&bitmap, num_bits, sizeof(HiddenClass));
+    instance_gc_vtable.instance_size = sizeof(HiddenClass);
   }
-  return &gc_vtable;
+  return &instance_gc_vtable;
 }
       
 // Analogue of PyType_GenericAlloc (default tp_alloc), but should only be used for Pyston classes!
@@ -1020,6 +1021,7 @@ extern "C" PyObject* PyObject_Init(PyObject* op, PyTypeObject* tp) noexcept {
 bool TRACK_ALLOCATIONS = false;
 void setupRuntime() {
     root_hcls = HiddenClass::makeRoot();
+    GC_REGISTER_ROOT_PINNING(root_hcls);
     gc::registerPermanentRoot(root_hcls);
 
     // We have to do a little dance to get object_cls and type_cls set up, since the normal
@@ -1031,6 +1033,7 @@ void setupRuntime() {
 
     void* mem = sgen_alloc_obj(object_cls_vtable, sizeof(BoxedClass));
     object_cls = ::new (mem) BoxedClass(NULL, &boxGCHandler, 0, sizeof(Box), false, Box::bitmap.gc_bitmap(), Box::bitmap.gc_bitmap_size());
+    GC_REGISTER_ROOT_PINNING(object_cls);
 
     GCVTable* type_cls_vtable = (GCVTable*)calloc(sizeof(GCVTable), 1);
     type_cls_vtable->descriptor = (mword)mono_gc_make_descr_for_object(BoxedHeapClass::bitmap.gc_bitmap(), BoxedHeapClass::bitmap.gc_bitmap_size(), sizeof(BoxedHeapClass));
@@ -1039,6 +1042,7 @@ void setupRuntime() {
     mem = sgen_alloc_obj(type_cls_vtable, sizeof(BoxedHeapClass));
     type_cls = ::new (mem)
       BoxedHeapClass(object_cls, &typeGCHandler, offsetof(BoxedClass, attrs), sizeof(BoxedHeapClass), false, BoxedHeapClass::bitmap.gc_bitmap(), BoxedHeapClass::bitmap.gc_bitmap_size());
+    GC_REGISTER_ROOT_PINNING(type_cls);
     PyObject_Init(object_cls, type_cls);
     PyObject_Init(type_cls, type_cls);
 
@@ -1046,13 +1050,17 @@ void setupRuntime() {
     None = new (none_cls) Box();
     assert(None->cls);
     gc::registerPermanentRoot(None);
+    GC_REGISTER_ROOT_PINNING(None);
 
     // You can't actually have an instance of basestring
     basestring_cls = new BoxedHeapClass(object_cls, NULL, 0, sizeof(Box), false, Box::bitmap.gc_bitmap(), Box::bitmap.gc_bitmap_size());
+    GC_REGISTER_ROOT_PINNING(basestring_cls);
 
     // TODO we leak all the string data!
     str_cls = new BoxedHeapClass(basestring_cls, NULL, 0, sizeof(BoxedString), false, BoxedString::bitmap.gc_bitmap(), BoxedString::bitmap.gc_bitmap_size());
     unicode_cls = new BoxedHeapClass(basestring_cls, NULL, 0, sizeof(BoxedUnicode), false, BoxedUnicode::bitmap.gc_bitmap(), BoxedUnicode::bitmap.gc_bitmap_size());
+    GC_REGISTER_ROOT_PINNING(str_cls);
+    GC_REGISTER_ROOT_PINNING(unicode_cls);
 
     // It wasn't safe to add __base__ attributes until object+type+str are set up, so do that now:
     type_cls->giveAttr("__base__", object_cls);
@@ -1065,6 +1073,7 @@ void setupRuntime() {
     tuple_cls = new BoxedHeapClass(object_cls, &tupleGCHandler, 0, sizeof(BoxedTuple), false, BoxedTuple::bitmap.gc_bitmap(), BoxedTuple::bitmap.gc_bitmap_size());
     EmptyTuple = new BoxedTuple({});
     gc::registerPermanentRoot(EmptyTuple);
+    GC_REGISTER_ROOT_PINNING(EmptyTuple);
 
 
     module_cls = new BoxedHeapClass(object_cls, NULL, offsetof(BoxedModule, attrs), sizeof(BoxedModule), false, BoxedModule::bitmap.gc_bitmap(), BoxedModule::bitmap.gc_bitmap_size());
@@ -1260,7 +1269,9 @@ void setupRuntime() {
     initdatetime();
     init_functools();
     init_collections();
+#endif
     inititertools();
+#if 0
     initresource();
     initsignal();
     initselect();

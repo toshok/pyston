@@ -31,6 +31,10 @@ void registerPermanentRoot(void* root_obj);
 // even if they are not heap allocated.
 void registerNonheapRootObject(void* obj);
 
+#define GC_REGISTER_ROOT_PINNING(x) sgen_register_root ((char*)&(x), sizeof(x), mono_gc_make_root_descr_all_refs (1), ROOT_TYPE_NORMAL)
+#define GC_REGISTER_CONSERVATIVE_RANGE(x, n) sgen_register_root ((char*)x, (size_t)n, NULL, ROOT_TYPE_PINNED)
+#define GC_DEREGISTER_CONSERVATIVE_RANGE(x) sgen_deregister_root ((char*)x)
+
 // If you want to have a static root "location" where multiple values could be stored, use this:
 class GCRootHandle {
 public:

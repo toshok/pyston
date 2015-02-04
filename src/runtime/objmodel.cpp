@@ -449,7 +449,7 @@ BoxedClass::BoxedClass(BoxedClass* base, gcvisit_func gc_visit, int attrs_offset
 ::GCVTable*
 BoxedClass::getInstanceGCVTable() {
   if (instance_gc_bitmap == (size_t*)-1) {
-    printf("**** class of type %s has no gc bitmap\n", tp_name);
+    //printf("**** class of type %s has no gc bitmap\n", tp_name);
     instance_gc_bitmap = Box::bitmap.gc_bitmap();
     instance_gc_bitmap_size = Box::bitmap.gc_bitmap_size();
   }
@@ -457,6 +457,7 @@ BoxedClass::getInstanceGCVTable() {
     return instance_gc_vtable;
 
   instance_gc_vtable = (::GCVTable*)malloc(sizeof(::GCVTable));
+  assert(tp_basicsize > 0);
   instance_gc_vtable->descriptor = (mword)mono_gc_make_descr_for_object(instance_gc_bitmap, instance_gc_bitmap_size, (size_t)tp_basicsize);
   instance_gc_vtable->instance_size = (size_t)tp_basicsize;
 
