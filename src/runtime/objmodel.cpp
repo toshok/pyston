@@ -516,7 +516,7 @@ extern "C" const std::string* getTypeName(Box* o) {
 }
 
 HiddenClass* HiddenClass::getOrMakeChild(const std::string& attr) {
-    std::unordered_map<std::string, HiddenClass*>::iterator it = children.find(attr);
+    auto it = children.find(attr);
     if (it != children.end())
         return it->second;
 
@@ -3648,17 +3648,17 @@ Box* typeCallInternal(BoxedFunction* f, CallRewriteArgs* rewrite_args, ArgPassSp
         object_new = typeLookup(object_cls, new_str, NULL);
         assert(object_new);
         // I think this is unnecessary, but good form:
-        gc::registerPermanentRoot(object_new);
+	GC_REGISTER_ROOT_PINNING(object_new);
 
         object_init = typeLookup(object_cls, init_str, NULL);
         assert(object_init);
-        gc::registerPermanentRoot(object_init);
+	GC_REGISTER_ROOT_PINNING(object_init);
 
         allowable_news.push_back(object_new);
 
         for (BoxedClass* allowed_cls : { enumerate_cls, xrange_cls }) {
             auto new_obj = typeLookup(allowed_cls, new_str, NULL);
-            gc::registerPermanentRoot(new_obj);
+	    GC_REGISTER_ROOT_PINNING(new_obj);
             allowable_news.push_back(new_obj);
         }
     }

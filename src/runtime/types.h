@@ -288,7 +288,7 @@ public:
 
     ::GCVTable* gc_vtable;
     std::unordered_map<std::string, int> attr_offsets;
-    std::unordered_map<std::string, HiddenClass*> children;
+    std::unordered_map<std::string, HiddenClass*, std::hash<std::string>, std::equal_to<std::string>, StlCompatAllocator<std::pair<std::string, HiddenClass*>>> children;
 
     HiddenClass* getOrMakeChild(const std::string& attr);
 
@@ -301,7 +301,7 @@ public:
     HiddenClass* delAttrToMakeHC(const std::string& attr);
 
     void* operator new(size_t size) __attribute__((visibility("default"))) {
-      return sgen_alloc_obj(HiddenClass::getInstanceGCVTable(), size);
+      return sgen_alloc_obj_mature(HiddenClass::getInstanceGCVTable(), size);
     }
 
     static GCVTable instance_gc_vtable;
@@ -390,13 +390,23 @@ public:
 
     void* operator new(size_t size, int capacity) {
         assert(size == sizeof(GCdArray));
-        return gc_alloc(capacity * sizeof(Box*) + size, gc::GCKind::UNTRACKED);
+	size_t alloc_size = capacity * sizeof(Box*) + size;
+	void* ptr = gc::gc_alloc(alloc_size, gc::GCKind::UNTRACKED);
+	GC_REGISTER_CONSERVATIVE_RANGE(ptr, alloc_size);
+	return ptr;
     }
 
-    void operator delete(void* p) { gc::gc_free(p); }
+    void operator delete(void* p) {
+      GC_DEREGISTER_CONSERVATIVE_RANGE(p);
+      gc::gc_free(p);
+    }
 
     static GCdArray* realloc(GCdArray* array, int capacity) {
-        return (GCdArray*)gc::gc_realloc(array, capacity * sizeof(Box*) + sizeof(GCdArray));
+        GC_DEREGISTER_CONSERVATIVE_RANGE(array);
+	size_t alloc_size = capacity * sizeof(Box*) + sizeof(GCdArray);
+        void* new_ptr = gc::gc_realloc(array, alloc_size);
+        GC_REGISTER_CONSERVATIVE_RANGE(new_ptr, alloc_size);
+	return (GCdArray*)new_ptr;
     }
 };
 

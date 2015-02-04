@@ -1082,27 +1082,46 @@ void setupRuntime() {
     // but those setup methods probably want access to these objects.
     // We could have a multi-stage setup process, but that seems overkill for now.
     int_cls = new BoxedHeapClass(object_cls, NULL, 0, sizeof(BoxedInt), false, BoxedInt::bitmap.gc_bitmap(), BoxedInt::bitmap.gc_bitmap_size());
+    GC_REGISTER_ROOT_PINNING(int_cls);
     bool_cls = new BoxedHeapClass(int_cls, NULL, 0, sizeof(BoxedBool), false, BoxedBool::bitmap.gc_bitmap(), BoxedBool::bitmap.gc_bitmap_size());
+    GC_REGISTER_ROOT_PINNING(bool_cls);
     complex_cls = new BoxedHeapClass(object_cls, NULL, 0, sizeof(BoxedComplex), false, BoxedComplex::bitmap.gc_bitmap(), BoxedComplex::bitmap.gc_bitmap_size());
+    GC_REGISTER_ROOT_PINNING(complex_cls);
     long_cls = new BoxedHeapClass(object_cls, &BoxedLong::gchandler, 0, sizeof(BoxedLong), false, BoxedLong::bitmap.gc_bitmap(), BoxedLong::bitmap.gc_bitmap_size());
+    GC_REGISTER_ROOT_PINNING(long_cls);
     float_cls = new BoxedHeapClass(object_cls, NULL, 0, sizeof(BoxedFloat), false, BoxedFloat::bitmap.gc_bitmap(), BoxedFloat::bitmap.gc_bitmap_size());
+    GC_REGISTER_ROOT_PINNING(float_cls);
     function_cls = new BoxedHeapClass(object_cls, &functionGCHandler, offsetof(BoxedFunction, attrs),
                                       sizeof(BoxedFunction), false, BoxedFunction::bitmap.gc_bitmap(), BoxedFunction::bitmap.gc_bitmap_size());
+    GC_REGISTER_ROOT_PINNING(function_cls);
     instancemethod_cls
       = new BoxedHeapClass(object_cls, &instancemethodGCHandler, 0, sizeof(BoxedInstanceMethod), false, BoxedInstanceMethod::bitmap.gc_bitmap(), BoxedInstanceMethod::bitmap.gc_bitmap_size());
+    GC_REGISTER_ROOT_PINNING(instancemethod_cls);
     list_cls = new BoxedHeapClass(object_cls, &listGCHandler, 0, sizeof(BoxedList), false, BoxedList::bitmap.gc_bitmap(), BoxedList::bitmap.gc_bitmap_size());
+    GC_REGISTER_ROOT_PINNING(list_cls);
     slice_cls = new BoxedHeapClass(object_cls, &sliceGCHandler, 0, sizeof(BoxedSlice), false);
+    GC_REGISTER_ROOT_PINNING(slice_cls);
     dict_cls = new BoxedHeapClass(object_cls, &dictGCHandler, 0, sizeof(BoxedDict), false, BoxedDict::bitmap.gc_bitmap(), BoxedDict::bitmap.gc_bitmap_size());
+    GC_REGISTER_ROOT_PINNING(dict_cls);
     file_cls = new BoxedHeapClass(object_cls, NULL, 0, sizeof(BoxedFile), false, BoxedFile::bitmap.gc_bitmap(), BoxedFile::bitmap.gc_bitmap_size());
+    GC_REGISTER_ROOT_PINNING(file_cls);
     set_cls = new BoxedHeapClass(object_cls, &setGCHandler, 0, sizeof(BoxedSet), false);
+    GC_REGISTER_ROOT_PINNING(set_cls);
     frozenset_cls = new BoxedHeapClass(object_cls, &setGCHandler, 0, sizeof(BoxedSet), false);
+    GC_REGISTER_ROOT_PINNING(frozenset_cls);
     member_cls = new BoxedHeapClass(object_cls, NULL, 0, sizeof(BoxedMemberDescriptor), false, BoxedMemberDescriptor::bitmap.gc_bitmap(), BoxedMemberDescriptor::bitmap.gc_bitmap_size());
+    GC_REGISTER_ROOT_PINNING(member_cls);
     closure_cls
         = new BoxedHeapClass(object_cls, &closureGCHandler, offsetof(BoxedClosure, attrs), sizeof(BoxedClosure), false);
+    GC_REGISTER_ROOT_PINNING(closure_cls);
     property_cls = new BoxedHeapClass(object_cls, &propertyGCHandler, 0, sizeof(BoxedProperty), false);
+    GC_REGISTER_ROOT_PINNING(property_cls);
     staticmethod_cls = new BoxedHeapClass(object_cls, &staticmethodGCHandler, 0, sizeof(BoxedStaticmethod), false);
+    GC_REGISTER_ROOT_PINNING(staticmethod_cls);
     classmethod_cls = new BoxedHeapClass(object_cls, &classmethodGCHandler, 0, sizeof(BoxedClassmethod), false);
+    GC_REGISTER_ROOT_PINNING(classmethod_cls);
     attrwrapper_cls = new BoxedHeapClass(object_cls, &AttrWrapper::gcHandler, 0, sizeof(AttrWrapper), false, AttrWrapper::bitmap.gc_bitmap(), AttrWrapper::bitmap.gc_bitmap_size());
+    GC_REGISTER_ROOT_PINNING(attrwrapper_cls);
 
     STR = typeFromClass(str_cls);
     BOXED_INT = typeFromClass(int_cls);
@@ -1250,17 +1269,13 @@ void setupRuntime() {
     //PyType_Ready(&PyCapsule_Type);
 
     initerrno();
-    // XXX(toshok)
-#if false
     init_sha();
     init_sha256();
     init_sha512();
     init_md5();
     init_random();
     init_sre();
-#endif
     initmath();
-#if false
     initoperator();
     initbinascii();
     initpwd();
@@ -1269,14 +1284,11 @@ void setupRuntime() {
     initdatetime();
     init_functools();
     init_collections();
-#endif
     inititertools();
-#if 0
     initresource();
     initsignal();
     initselect();
     initfcntl();
-#endif
 
     setupSysEnd();
 

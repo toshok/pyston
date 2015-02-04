@@ -64,7 +64,9 @@ void setupBool() {
     False = new BoxedBool(false);
 
     gc::registerPermanentRoot(True);
+    GC_REGISTER_ROOT_PINNING(True);
     gc::registerPermanentRoot(False);
+    GC_REGISTER_ROOT_PINNING(False);
 }
 
 void teardownBool() {

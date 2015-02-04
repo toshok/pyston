@@ -852,6 +852,7 @@ void setupInt() {
     for (int i = 0; i < NUM_INTERNED_INTS; i++) {
         interned_ints[i] = new BoxedInt(i);
         gc::registerPermanentRoot(interned_ints[i]);
+	GC_REGISTER_ROOT_PINNING(interned_ints[i]);
     }
 
     int_cls->giveAttr("__name__", boxStrConstant("int"));
