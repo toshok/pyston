@@ -4,3 +4,6 @@
 [submodule "libpypa"]
 	path = libpypa
 	url = git://github.com/vinzenz/libpypa.git
+[submodule "django"]
+	path = lib_pyston/django
+	url = git@github.com:kmod/django_test
