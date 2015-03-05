@@ -480,7 +480,7 @@ else
 FIRST_LLVM_BUILD := release
 endif
 NONFIRST_LLVM_BUILDS := $(filter-out $(FIRST_LLVM_BUILD),$(LLVM_BUILDS))
-.PHONY: llvm llvm_configs $(patsubst %,llvm_%,$(LLVM_BUILDS)) llvm/% llvm_up
+.PHONY: llvm llvm_configs $(patsubst %,llvm_%,$(LLVM_BUILDS)) llvm/% llvm_up llvm_fetch_prebuilt
 llvm: llvm_configs $(LLVM_BUILDS:%=llvm_%)
 llvm_configs: $(LLVM_BUILDS:%=llvm/%/tools/llvm-config)
 # Use the configure-created Makefile as evidence that llvm has been configured:
@@ -593,6 +593,9 @@ llvm_up:
 	python $(TOOLS_DIR)/git_svn_gotorev.py $(LLVM_SRC) $(LLVM_REVISION) ./llvm_patches
 	python $(TOOLS_DIR)/git_svn_gotorev.py $(LLVM_SRC)/tools/clang $(LLVM_REVISION) ./clang_patches
 	touch $(LLVM_SRC)/_patched
+
+llvm_fetch_prebuilt:
+	-(cd ~/pyston_deps; curl -L https://www.dropbox.com/s/bkyd1p06y9uoxzy/llvm-prebuilt-230300.tar.bz2?dl=1 | tar -xjf -)
 
 # end of llvm rules
 ########
