@@ -18,7 +18,7 @@ install:
   - if [ "$CXX" = "g++" ]; then sudo apt-get install -qq g++-4.8; fi
   - if [ "$CXX" = "g++" ]; then export CC="gcc-4.8" CXX="g++-4.8"; fi
   - if [ ! -d ~/pyston_deps/llvm-trunk ]; then git clone git://github.com/llvm-mirror/llvm.git ~/pyston_deps/llvm-trunk; fi
-  - if [ ! -d ~/pyston_deps/llvm-trunk/tools/clang]; then git clone git://github.com/llvm-mirror/clang.git ~/pyston_deps/llvm-trunk/tools/clang; fi
+  - if [ ! -d ~/pyston_deps/llvm-trunk/tools/clang ]; then git clone git://github.com/llvm-mirror/clang.git ~/pyston_deps/llvm-trunk/tools/clang; fi
   - git config --global user.email "you@example.com"
   - git config --global user.name "Your Name"
   - mkdir ~/pyston-build && cd ~/pyston-build
