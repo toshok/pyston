@@ -1,6 +1,9 @@
-language: cpp
-compiler:
-  - clang
+language: python
+python:
+  - "2.7"
+
+#compiler:
+#  - clang
 # - gcc
 
 install:
