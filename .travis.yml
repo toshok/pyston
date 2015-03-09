@@ -2,6 +2,8 @@ language: python
 python:
   - "2.7"
 
+cache: true
+
 #compiler:
 #  - clang
 # - gcc
@@ -11,7 +13,8 @@ install:
   - sudo add-apt-repository --yes ppa:kubuntu-ppa/backports
   - sudo apt-get -qq update
   - sudo apt-get install -yqq git cmake ninja-build libncurses5-dev liblzma-dev libreadline-dev libgmp3-dev autoconf libtool python-dev texlive-extra-utils
-  - if [ "$CXX" = "clang++" ]; then sudo apt-get install -qq clang-3.4 libstdc++-4.8-dev; fi
+  - sudo apt-get install -qq clang-3.4 libstdc++-4.8-dev
+  - export CXX=clang++
   - if [ "$CXX" = "g++" ]; then sudo apt-get install -qq g++-4.8; fi
   - if [ "$CXX" = "g++" ]; then export CC="gcc-4.8" CXX="g++-4.8"; fi
   - git clone git://github.com/llvm-mirror/llvm.git ~/pyston_deps/llvm-trunk
