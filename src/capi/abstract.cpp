@@ -1431,6 +1431,8 @@ extern "C" Py_ssize_t PyNumber_AsSsize_t(PyObject* o, PyObject* exc) noexcept {
         return PyLong_AsSsize_t(o);
     }
 
-    Py_FatalError("unimplemented");
+    // TODO more cases here (involving tp_as_number), but for now just throw
+    PyErr_SetString(PyExc_TypeError, "an integer is required");
+    return -1;
 }
 }
