@@ -828,7 +828,21 @@ Box* fileNew(BoxedClass* cls, Box* s, Box* m) {
     }
 
     const std::string& fn = static_cast<BoxedString*>(s)->s;
-    const std::string& mode = static_cast<BoxedString*>(m)->s;
+    std::string mode(static_cast<BoxedString*>(m)->s);
+
+    // cpython extends the mode with 'U' for universal newlines.  this isn't supported by fopen, so
+    // warn about it if it's there and strip it for now.
+
+    auto Upos = mode.find('U');
+    if (Upos != std::string::npos) {
+        fprintf(stderr, "'U' mode not supported yet\n");
+        while (Upos != std::string::npos) {
+          mode = mode.replace(Upos, 1, "");
+          Upos = mode.find(Upos, 'U');
+        }
+    }
+
+    if (mode.size() == 0) mode = "r";
 
     FILE* f = fopen(fn.c_str(), mode.c_str());
     if (!f) {
