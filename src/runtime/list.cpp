@@ -291,16 +291,22 @@ extern "C" Box* listSetitemSlice(BoxedList* self, BoxedSlice* slice, Box* v) {
         RELEASE_ASSERT(0, "unsupported type for list slice assignment: '%s'", getTypeName(v));
     }
 
-    RELEASE_ASSERT(!v_elts || self->elts->elts != v_elts, "Slice self-assignment currently unsupported");
-
     int delts = v_size - (stop - start);
-    int remaining_elts = self->size - stop;
     self->ensure(delts);
-
+    int remaining_elts = self->size - stop;
     memmove(self->elts->elts + start + v_size, self->elts->elts + stop, remaining_elts * sizeof(Box*));
-    for (int i = 0; i < v_size; i++) {
-        Box* r = v_elts[i];
-        self->elts->elts[start + i] = r;
+
+    if (self->elts->elts == v_elts) {
+        for (int i = v_size-1; i >= 0; i--) {
+            Box* r = v_elts[i];
+            self->elts->elts[start + i] = r;
+        }
+    }
+    else {
+        for (int i = 0; i < v_size; i++) {
+            Box* r = v_elts[i];
+            self->elts->elts[start + i] = r;
+        }
     }
 
     self->size += delts;
