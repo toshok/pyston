@@ -2062,7 +2062,7 @@ Box* strDecode(BoxedString* self, Box* encoding, Box* error) {
         raiseExcHelper(TypeError, "decode() argument 2 must be string, not '%s'", getTypeName(error_str));
 
     Box* result
-        = PyCodec_Decode(self, encoding_str ? encoding_str->s.c_str() : NULL, error_str ? error_str->s.c_str() : NULL);
+        = PyCodec_Decode(self, encoding_str ? encoding_str->s.c_str() : PyUnicode_GetDefaultEncoding(), error_str ? error_str->s.c_str() : NULL);
     checkAndThrowCAPIException();
     return result;
 }
