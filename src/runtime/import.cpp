@@ -55,6 +55,21 @@ static BoxedModule* createAndRunModule(const std::string& name, const std::strin
     return module;
 }
 
+static BoxedModule* createAndRunModule(const std::string& name, FILE* fp, const std::string& module_path) {
+    BoxedModule* module = createModule(name, module_path); // XXX module_path here?  we don't have the filename
+
+    Box* b_path = boxStringPtr(&module_path);
+
+    BoxedList* path_list = new BoxedList();
+    listAppendInternal(path_list, b_path);
+
+    module->setattr(path_str, path_list, NULL);
+
+    AST_Module* ast = parse_file(fp);
+    compileAndRunModule(ast, module);
+    return module;
+}
+
 #if LLVMREV < 210072
 #define LLVM_SYS_FS_EXISTS_CODE_OKAY(code) ((code) == 0)
 #else
@@ -657,7 +672,6 @@ Box* impLoadModule(Box* _name, Box* _file, Box* _pathname, Box** args) {
     Box* _description = args[0];
 
     RELEASE_ASSERT(_name->cls == str_cls, "");
-    RELEASE_ASSERT(_file == None, "");
     RELEASE_ASSERT(_pathname->cls == str_cls, "");
     RELEASE_ASSERT(_description->cls == tuple_cls, "");
 
@@ -674,11 +688,13 @@ Box* impLoadModule(Box* _name, Box* _file, Box* _pathname, Box** args) {
     RELEASE_ASSERT(mode->cls == str_cls, "");
     RELEASE_ASSERT(type->cls == int_cls, "");
 
-    RELEASE_ASSERT(suffix->s.empty(), "");
-    RELEASE_ASSERT(mode->s.empty(), "");
-
     if (type->n == SearchResult::PKG_DIRECTORY) {
         return createAndRunModule(name->s, pathname->s + "/__init__.py", pathname->s);
+    }
+
+    if (_file && _file != None) {
+        RELEASE_ASSERT(type->n == SearchResult::PY_SOURCE, "we can only import PY_SOURCE from a File object");
+        return createAndRunModule(name->s, PyFile_AsFile(_file), pathname->s);
     }
 
     Py_FatalError("unimplemented");

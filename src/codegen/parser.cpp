@@ -964,6 +964,39 @@ AST_Module* parse_string(const char* code) {
     return m;
 }
 
+AST_Module* parse_file(FILE* fp) {
+    // TODO: our parser interfaces don't permit a FILE* as input, only a filename.
+    // so we write out the file then re-parser it.
+    char buf[] = "pystontmp_XXXXXX";
+    char* tmpdir = mkdtemp(buf);
+    assert(tmpdir);
+    std::string tmp = std::string(tmpdir) + "/in.py";
+    if (VERBOSITY() >= 1) {
+        printf("writing from file pointer to %s\n", tmp.c_str());
+    }
+
+    char fbuf[4096];
+    FILE* f = fopen(tmp.c_str(), "w");
+
+    while (!feof(fp)) {
+      int nread = fread(fbuf, 1, sizeof(fbuf), fp);
+      if (nread > 0)
+          if (fwrite(fbuf, 1, nread, f) != nread) abort();
+
+      if (nread < 4096) {
+          if (ferror(fp)) abort();
+          break;
+      }
+    }
+
+    fclose(f);
+
+    AST_Module* m = parse_file(tmp.c_str());
+    removeDirectoryIfExists(tmpdir);
+
+    return m;
+}
+
 AST_Module* parse_file(const char* fn) {
     Timer _t("parsing");
 

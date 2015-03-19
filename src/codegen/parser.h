@@ -15,6 +15,8 @@
 #ifndef PYSTON_CODEGEN_PARSER_H
 #define PYSTON_CODEGEN_PARSER_H
 
+#include <stdio.h>
+
 namespace pyston {
 
 class AST_Module;
@@ -22,6 +24,7 @@ class AST_Module;
 AST_Module* parse_string(const char* code);
 
 AST_Module* parse_file(const char* fn);
+AST_Module* parse_file(FILE* fp);
 AST_Module* caching_parse_file(const char* fn);
 }
 
