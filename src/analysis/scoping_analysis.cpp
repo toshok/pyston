@@ -329,6 +329,8 @@ public:
 
         size_t parentCounter = 0;
         // Casting to a ScopeInfoBase* is okay because only a ScopeInfoBase can have a closure.
+        // We just walk up the scopes until we find the scope with this name. Count the number
+        // of parent links we follow, and then get the offset of the name.
         for (ScopeInfoBase* parent = static_cast<ScopeInfoBase*>(this->parent); parent != NULL;
              parent = static_cast<ScopeInfoBase*>(parent->parent)) {
             if (parent->createsClosure()) {
@@ -348,7 +350,10 @@ public:
         return closure_offsets[name];
     }
 
-    size_t getClosureSize() override { return closure_offsets.size(); }
+    size_t getClosureSize() override {
+        assert(createsClosure());
+        return closure_offsets.size();
+    }
 
     InternedString mangleName(const InternedString id) override {
         return pyston::mangleName(id, usage->private_name, usage->scoping->getInternedStrings());
@@ -360,6 +365,10 @@ public:
         if (!allDerefVarsAndInfoCached) {
             allDerefVarsAndInfoCached = true;
 
+            // TODO this could probably be implemented faster
+
+            // Get all the variables that we need to return: any variable from the
+            // passed-in closure that is accessed in this scope or in a child scope.
             StrSet allDerefs = usage->got_from_closure;
             for (InternedString name : usage->passthrough_accesses) {
                 if (allDerefs.find(name) != allDerefs.end()) {
@@ -367,10 +376,13 @@ public:
                 }
             }
 
+            // Call `getDerefInfo` on all of these variables and put the results in
+            // `allDerefVarsAndInfo`
             for (InternedString name : allDerefs) {
                 allDerefVarsAndInfo.push_back({ name, getDerefInfo(name) });
             }
 
+            // Sort in order of `num_parents_from_passed_closure`
             std::sort(allDerefVarsAndInfo.begin(), allDerefVarsAndInfo.end(), derefComparator);
         }
         return allDerefVarsAndInfo;
