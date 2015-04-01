@@ -66,6 +66,7 @@ void setupGenerator();
 void setupDescr();
 void teardownDescr();
 void setupCode();
+void setupFrame();
 
 void setupSys();
 void setupBuiltins();
@@ -704,5 +705,8 @@ extern "C" PyObject* PystonType_GenericAlloc(BoxedClass* cls, Py_ssize_t nitems)
 extern Box* dict_descr;
 
 Box* codeForFunction(BoxedFunction*);
+Box* codeForCLFunction(CLFunction*);
+
+Box* getFrame(int depth);
 }
 #endif
