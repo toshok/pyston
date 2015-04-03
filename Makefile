@@ -145,7 +145,7 @@ LLVM_PROFILE_LIB_DEPS := $(wildcard $(LLVM_BUILD)/Release+Profile/lib/*)
 CLANG_EXE := $(LLVM_BIN)/clang
 CLANGPP_EXE := $(LLVM_BIN)/clang++
 
-COMMON_CFLAGS := -g -Werror -Wreturn-type -Wall -Wno-sign-compare -Wno-unused -Isrc -Ifrom_cpython/Include -fno-omit-frame-pointer
+COMMON_CFLAGS := -g -Werror -Wreturn-type -Wall -Wno-sign-compare -Wno-unused -Isrc -Ifrom_cpython/Include -Ifrom_cpython/Modules -fno-omit-frame-pointer
 COMMON_CFLAGS += -Wextra -Wno-sign-compare
 COMMON_CFLAGS += -Wno-unused-parameter # should use the "unused" attribute
 COMMON_CXXFLAGS := $(COMMON_CFLAGS)
@@ -225,7 +225,7 @@ endif
 CLANGFLAGS := $(CXXFLAGS_DBG) $(CLANG_EXTRA_FLAGS)
 CLANGFLAGS_RELEASE := $(CXXFLAGS_RELEASE) $(CLANG_EXTRA_FLAGS)
 
-EXT_CFLAGS := $(COMMON_CFLAGS) -fPIC -Wimplicit -O2 -Ifrom_cpython/Include
+EXT_CFLAGS := $(COMMON_CFLAGS) -fPIC -Wimplicit -O2 -Ifrom_cpython/Include -Ifrom_cpython/Modules
 EXT_CFLAGS += -Wno-missing-field-initializers
 EXT_CFLAGS += -Wno-tautological-compare -Wno-type-limits -Wno-strict-aliasing
 EXT_CFLAGS_PROFILE := $(EXT_CFLAGS) -pg
@@ -408,7 +408,7 @@ NONSTDLIB_SRCS := $(MAIN_SRCS) $(OPTIONAL_SRCS) $(TOOL_SRCS) $(UNITTEST_SRCS)
 # all: pyston_dbg pyston_release pyston_oprof pyston_prof $(OPTIONAL_SRCS:.cpp=.o) ext_python ext_pyston
 all: pyston_dbg pyston_release pyston_prof ext_python ext_pyston unittests
 
-ALL_HEADERS := $(wildcard src/*/*.h) $(wildcard src/*/*/*.h) $(wildcard from_cpython/Include/*.h)
+ALL_HEADERS := $(wildcard src/*/*.h) $(wildcard src/*/*/*.h) $(wildcard from_cpython/Include/*.h) $(wildcard from_cpython/Modules/*.h)
 tags: $(SRCS) $(OPTIONAL_SRCS) $(FROM_CPYTHON_SRCS) $(ALL_HEADERS)
 	$(ECHO) Calculating tags...
 	$(VERB) $(CTAGS) $^
@@ -1113,7 +1113,7 @@ ext_pyston: $(TEST_EXT_MODULE_NAMES:%=$(TEST_DIR)/test_extension/%.pyston.so)
 ifneq ($(SELF_HOST),1)
 $(TEST_DIR)/test_extension/%.pyston.so: $(TEST_DIR)/test_extension/%.o
 	$(CC) -pthread -shared -Wl,-O1 -Wl,-Bsymbolic-functions -Wl,-z,relro $< -o $@ -g
-$(TEST_DIR)/test_extension/%.o: $(TEST_DIR)/test_extension/%.c $(wildcard from_cpython/Include/*.h)
+$(TEST_DIR)/test_extension/%.o: $(TEST_DIR)/test_extension/%.c $(wildcard from_cpython/Include/*.h) $(wildcard from_cpython/Modules/*.h)
 	$(CC) -pthread $(EXT_CFLAGS) -c $< -o $@
 else
 # Hax: we want to generate multiple targets from a single rule, and run the rule only if the
