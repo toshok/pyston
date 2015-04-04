@@ -2138,54 +2138,175 @@ Box* strEndswith(BoxedString* self, Box* elt, Box* start, Box** _args) {
     return boxBool(compareStringRefs(self->s, istart, sub->size(), sub->s) == 0);
 }
 
-Box* strDecode(BoxedString* self, Box* encoding, Box* error) {
+extern "C" PyObject* PyString_AsDecodedObject(PyObject* str, const char* encoding, const char* errors) noexcept {
+    PyObject* v;
+
+    if (!PyString_Check(str)) {
+        PyErr_BadArgument();
+        goto onError;
+    }
+
+    if (encoding == NULL) {
+#ifdef Py_USING_UNICODE
+        encoding = PyUnicode_GetDefaultEncoding();
+#else
+        PyErr_SetString(PyExc_ValueError, "no encoding specified");
+        goto onError;
+#endif
+    }
+
+    /* Decode via the codec registry */
+    v = PyCodec_Decode(str, encoding, errors);
+    if (v == NULL)
+        goto onError;
+
+    return v;
+
+onError:
+    return NULL;
+}
+
+extern "C" PyObject* PyString_AsDecodedString(PyObject* str, const char* encoding, const char* errors) noexcept {
+    PyObject* v;
+
+    v = PyString_AsDecodedObject(str, encoding, errors);
+    if (v == NULL)
+        goto onError;
+
+#ifdef Py_USING_UNICODE
+    /* Convert Unicode to a string using the default encoding */
+    if (PyUnicode_Check(v)) {
+        PyObject* temp = v;
+        v = PyUnicode_AsEncodedString(v, NULL, NULL);
+        Py_DECREF(temp);
+        if (v == NULL)
+            goto onError;
+    }
+#endif
+    if (!PyString_Check(v)) {
+        PyErr_Format(PyExc_TypeError, "decoder did not return a string object (type=%.400s)", Py_TYPE(v)->tp_name);
+        Py_DECREF(v);
+        goto onError;
+    }
+
+    return v;
+
+onError:
+    return NULL;
+}
+
+Box* strDecode(BoxedString* self, Box* encoding, Box* errors) {
     if (!isSubclass(self->cls, str_cls))
         raiseExcHelper(TypeError, "descriptor 'decode' requires a 'str' object but received a '%s'", getTypeName(self));
 
-    BoxedString* encoding_str = (BoxedString*)encoding;
-    BoxedString* error_str = (BoxedString*)error;
+    if (encoding && encoding->cls == unicode_cls)
+        encoding = _PyUnicode_AsDefaultEncodedString(encoding, NULL);
 
-    if (encoding_str && encoding_str->cls == unicode_cls)
-        encoding_str = (BoxedString*)_PyUnicode_AsDefaultEncodedString(encoding_str, NULL);
+    if (encoding && !isSubclass(encoding->cls, str_cls))
+        raiseExcHelper(TypeError, "decode() argument 1 must be string, not '%s'", getTypeName(encoding));
 
-    if (encoding_str && !isSubclass(encoding_str->cls, str_cls))
-        raiseExcHelper(TypeError, "decode() argument 1 must be string, not '%s'", getTypeName(encoding_str));
+    if (errors && errors->cls == unicode_cls)
+        errors = _PyUnicode_AsDefaultEncodedString(errors, NULL);
 
-    if (error_str && error_str->cls == unicode_cls)
-        error_str = (BoxedString*)_PyUnicode_AsDefaultEncodedString(error_str, NULL);
+    if (errors && !isSubclass(errors->cls, str_cls))
+        raiseExcHelper(TypeError, "decode() argument 2 must be string, not '%s'", getTypeName(errors));
 
-    if (error_str && !isSubclass(error_str->cls, str_cls))
-        raiseExcHelper(TypeError, "decode() argument 2 must be string, not '%s'", getTypeName(error_str));
+    PyObject* v
+        = PyString_AsDecodedObject((PyObject*)self, encoding ? static_cast<BoxedString*>(encoding)->data() : NULL,
+                                   errors ? static_cast<BoxedString*>(errors)->data() : NULL);
 
-    Box* result
-        = PyCodec_Decode(self, encoding_str ? encoding_str->data() : NULL, error_str ? error_str->data() : NULL);
     checkAndThrowCAPIException();
-    return result;
+    if (!PyString_Check(v) && !PyUnicode_Check(v)) {
+        raiseExcHelper(TypeError, "decoder did not return a string/unicode object "
+                                  "(type=%.400s)",
+                       getTypeName(v));
+    }
+    return v;
 }
 
-Box* strEncode(BoxedString* self, Box* encoding, Box* error) {
+extern "C" Box* PyString_AsEncodedObject(Box* str, const char* encoding, const char* errors) noexcept {
+    PyObject* v;
+
+    if (!PyString_Check(str)) {
+        PyErr_BadArgument();
+        goto onError;
+    }
+
+    if (encoding == NULL) {
+#ifdef Py_USING_UNICODE
+        encoding = PyUnicode_GetDefaultEncoding();
+#else
+        PyErr_SetString(PyExc_ValueError, "no encoding specified");
+        goto onError;
+#endif
+    }
+
+    /* Encode via the codec registry */
+    v = PyCodec_Encode(str, encoding, errors);
+    if (v == NULL)
+        goto onError;
+
+    return v;
+
+onError:
+    return NULL;
+}
+
+extern "C" Box* PyString_AsEncodedString(PyObject* str, const char* encoding, const char* errors) noexcept {
+    PyObject* v;
+
+    v = PyString_AsEncodedObject(str, encoding, errors);
+    if (v == NULL)
+        goto onError;
+
+#ifdef Py_USING_UNICODE
+    /* Convert Unicode to a string using the default encoding */
+    if (PyUnicode_Check(v)) {
+        PyObject* temp = v;
+        v = PyUnicode_AsEncodedString(v, NULL, NULL);
+        Py_DECREF(temp);
+        if (v == NULL)
+            goto onError;
+    }
+#endif
+    if (!PyString_Check(v)) {
+        PyErr_Format(PyExc_TypeError, "encoder did not return a string object (type=%.400s)", Py_TYPE(v)->tp_name);
+        Py_DECREF(v);
+        goto onError;
+    }
+
+    return v;
+
+onError:
+    return NULL;
+}
+
+Box* strEncode(BoxedString* self, Box* encoding, Box* errors) {
     if (!isSubclass(self->cls, str_cls))
         raiseExcHelper(TypeError, "descriptor 'encode' requires a 'str' object but received a '%s'", getTypeName(self));
 
-    BoxedString* encoding_str = (BoxedString*)encoding;
-    BoxedString* error_str = (BoxedString*)error;
+    if (encoding && encoding->cls == unicode_cls)
+        encoding = _PyUnicode_AsDefaultEncodedString(encoding, NULL);
 
-    if (encoding_str && encoding_str->cls == unicode_cls)
-        encoding_str = (BoxedString*)_PyUnicode_AsDefaultEncodedString(encoding_str, NULL);
+    if (encoding && !isSubclass(encoding->cls, str_cls))
+        raiseExcHelper(TypeError, "encode() argument 1 must be string, not '%s'", getTypeName(encoding));
 
-    if (encoding_str && !isSubclass(encoding_str->cls, str_cls))
-        raiseExcHelper(TypeError, "encode() argument 1 must be string, not '%s'", getTypeName(encoding_str));
+    if (errors && errors->cls == unicode_cls)
+        errors = _PyUnicode_AsDefaultEncodedString(errors, NULL);
 
-    if (error_str && error_str->cls == unicode_cls)
-        error_str = (BoxedString*)_PyUnicode_AsDefaultEncodedString(error_str, NULL);
+    if (errors && !isSubclass(errors->cls, str_cls))
+        raiseExcHelper(TypeError, "encode() argument 2 must be string, not '%s'", getTypeName(errors));
 
-    if (error_str && !isSubclass(error_str->cls, str_cls))
-        raiseExcHelper(TypeError, "encode() argument 2 must be string, not '%s'", getTypeName(error_str));
-
-    Box* result = PyCodec_Encode(self, encoding_str ? encoding_str->data() : PyUnicode_GetDefaultEncoding(),
-                                 error_str ? error_str->data() : NULL);
+    PyObject* v
+        = PyString_AsEncodedObject((PyObject*)self, encoding ? static_cast<BoxedString*>(encoding)->data() : NULL,
+                                   errors ? static_cast<BoxedString*>(errors)->data() : NULL);
     checkAndThrowCAPIException();
-    return result;
+    if (!PyString_Check(v) && !PyUnicode_Check(v)) {
+        raiseExcHelper(TypeError, "encoder did not return a string/unicode object "
+                                  "(type=%.400s)",
+                       getTypeName(v));
+    }
+    return v;
 }
 
 extern "C" Box* strGetitem(BoxedString* self, Box* slice) {
@@ -2318,9 +2439,17 @@ extern "C" PyObject* PyString_FromStringAndSize(const char* s, ssize_t n) noexce
     return boxStrConstantSize(s, n);
 }
 
-extern "C" char* PyString_AsString(PyObject* o) noexcept {
-    RELEASE_ASSERT(isSubclass(o->cls, str_cls), "");
+static /*const*/ char* string_getbuffer(register PyObject* op) {
+    char* s;
+    Py_ssize_t len;
+    if (PyString_AsStringAndSize(op, &s, &len))
+        return NULL;
+    return s;
+}
 
+extern "C" char* PyString_AsString(PyObject* o) noexcept {
+    if (!PyString_Check(o))
+        return string_getbuffer(o);
     BoxedString* s = static_cast<BoxedString*>(o);
     return getWriteableStringContents(s);
 }
