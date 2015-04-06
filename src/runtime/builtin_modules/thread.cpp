@@ -172,15 +172,14 @@ public:
     }
 
     static Box* getattr(Box* obj, char* name) {
-        Box* tls_obj = getThreadLocalObject(obj);
+        BoxedDict* tls_obj = static_cast<BoxedDict*>(getThreadLocalObject(obj));
         if (!strcmp(name, "__dict__"))
             return tls_obj;
 
-        try {
-            return getitem(tls_obj, boxString(name));
-        } catch (ExcInfo e) {
+        Box* rtn = tls_obj->getOrNull(boxString(name));
+        if (!rtn)
             raiseExcHelper(AttributeError, "'%.50s' object has no attribute '%.400s'", obj->cls->tp_name, name);
-        }
+        return rtn;
     }
 
     static Box* hash(Box* obj) { return boxInt(PyThread_get_thread_ident()); }
