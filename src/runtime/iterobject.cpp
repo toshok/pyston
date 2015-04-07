@@ -44,10 +44,17 @@ bool seqiterHasnextUnboxed(Box* s) {
     BoxedSeqIter* self = static_cast<BoxedSeqIter*>(s);
 
     Box* next;
-    try {
-        next = getitem(self->b, boxInt(self->idx));
-    } catch (ExcInfo e) {
-        return false;
+    PySequenceMethods* seqm = self->b->cls->tp_as_sequence;
+    if (seqm && seqm->sq_length && seqm->sq_item) {
+        if (self->idx >= seqm->sq_length(self->b))
+            return false;
+        next = seqm->sq_item(self->b, self->idx);
+    } else {
+        try {
+            next = getitem(self->b, boxInt(self->idx));
+        } catch (ExcInfo e) {
+            return false;
+        }
     }
     self->idx++;
     self->next = next;
@@ -59,10 +66,17 @@ Box* seqiterHasnext(Box* s) {
     BoxedSeqIter* self = static_cast<BoxedSeqIter*>(s);
 
     Box* next;
-    try {
-        next = getitem(self->b, boxInt(self->idx));
-    } catch (ExcInfo e) {
-        return False;
+    PySequenceMethods* seqm = self->b->cls->tp_as_sequence;
+    if (seqm && seqm->sq_length && seqm->sq_item) {
+        if (self->idx >= seqm->sq_length(self->b))
+            return False;
+        next = seqm->sq_item(self->b, self->idx);
+    } else {
+        try {
+            next = getitem(self->b, boxInt(self->idx));
+        } catch (ExcInfo e) {
+            return False;
+        }
     }
     self->idx++;
     self->next = next;
