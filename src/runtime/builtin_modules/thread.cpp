@@ -150,7 +150,7 @@ Box* allocateLock() {
     return new BoxedThreadLock();
 }
 
-static BoxedClass* thread_local_cls;
+BoxedClass* thread_local_cls;
 class BoxedThreadLocal : public Box {
 public:
     BoxedThreadLocal() {}
@@ -171,12 +171,16 @@ public:
         return 0;
     }
 
-    static Box* getattr(Box* obj, char* name) {
+    static Box* getattrOrNull(Box* obj, char* name) {
         BoxedDict* tls_obj = static_cast<BoxedDict*>(getThreadLocalObject(obj));
         if (!strcmp(name, "__dict__"))
             return tls_obj;
 
-        Box* rtn = tls_obj->getOrNull(boxString(name));
+        return tls_obj->getOrNull(boxString(name));
+    }
+
+    static Box* getattr(Box* obj, char* name) {
+        Box* rtn = BoxedThreadLocal::getattrOrNull(obj, name);
         if (!rtn)
             raiseExcHelper(AttributeError, "'%.50s' object has no attribute '%.400s'", obj->cls->tp_name, name);
         return rtn;
@@ -187,6 +191,10 @@ public:
 
     DEFAULT_CLASS(thread_local_cls);
 };
+
+Box* getThreadLocal(Box* local, char* attr) {
+    return BoxedThreadLocal::getattrOrNull(local, attr);
+}
 
 Box* getIdent() {
     return boxInt(pthread_self());

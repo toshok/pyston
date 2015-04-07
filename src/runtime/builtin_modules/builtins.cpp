@@ -407,11 +407,15 @@ Box* getattrFunc(Box* obj, Box* _str, Box* default_value) {
     BoxedString* str = static_cast<BoxedString*>(_str);
 
     Box* rtn = NULL;
-    try {
-        rtn = getattr(obj, str->s.data());
-    } catch (ExcInfo e) {
-        if (!e.matches(AttributeError))
-            throw e;
+    if (obj->cls == thread_local_cls) {
+        rtn = getThreadLocal(obj, const_cast<char*>(str->s.data()));
+    } else {
+        try {
+            rtn = getattr(obj, str->s.data());
+        } catch (ExcInfo e) {
+            if (!e.matches(AttributeError))
+                throw e;
+        }
     }
 
     if (!rtn) {
@@ -445,12 +449,16 @@ Box* hasattr(Box* obj, Box* _str) {
 
     BoxedString* str = static_cast<BoxedString*>(_str);
     Box* attr;
-    try {
-        attr = getattrInternal(obj, str->s, NULL);
-    } catch (ExcInfo e) {
-        if (e.matches(Exception))
-            return False;
-        throw e;
+    if (obj->cls == thread_local_cls) {
+        attr = getThreadLocal(obj, const_cast<char*>(str->s.data()));
+    } else {
+        try {
+            attr = getattrInternal(obj, str->s, NULL);
+        } catch (ExcInfo e) {
+            if (e.matches(Exception))
+                return False;
+            throw e;
+        }
     }
 
     Box* rtn = attr ? True : False;
