@@ -433,6 +433,7 @@ public:
 
 class BoxedDict;
 class BoxedString;
+class BoxedInt;
 
 class Box {
 private:
@@ -475,6 +476,7 @@ public:
     // Only valid for hc-backed instances:
     Box* getAttrWrapper();
 
+    BoxedInt* hashOrNullIC();
     Box* reprIC();
     BoxedString* reprICAsString();
     bool nonzeroIC();

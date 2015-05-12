@@ -132,7 +132,11 @@ size_t PyHasher::operator()(Box* b) const {
         return H(s->data(), s->size());
     }
 
-    BoxedInt* i = hash(b);
+    BoxedInt* i = b->hashOrNullIC();
+    if (i)
+        return i->n;
+
+    i = hash(b);
     assert(sizeof(size_t) == sizeof(i->n));
     size_t rtn = i->n;
     return rtn;

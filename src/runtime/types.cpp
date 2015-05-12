@@ -228,6 +228,20 @@ Box* BoxedClass::callNextIC(Box* obj) {
                     nullptr, nullptr, nullptr, nullptr, nullptr);
 }
 
+Box* BoxedClass::callHashIC(Box* obj, bool null_on_nonexistent) {
+    assert(obj->cls == this);
+
+    auto ic = hash_ic.get();
+    if (!ic) {
+        ic = new CallattrIC();
+        hash_ic.reset(ic);
+    }
+
+    static std::string hash_str("__hash__");
+    return ic->call(obj, &hash_str, CallattrFlags({.cls_only = true, .null_on_nonexistent = null_on_nonexistent }),
+                    ArgPassSpec(0), nullptr, nullptr, nullptr, nullptr, nullptr);
+}
+
 Box* BoxedClass::callReprIC(Box* obj) {
     assert(obj->cls == this);
 
@@ -252,6 +266,17 @@ bool BoxedClass::callNonzeroIC(Box* obj) {
     }
 
     return ic->call(obj);
+}
+
+BoxedInt* Box::hashOrNullIC() {
+    Box* r = this->cls->callHashIC(this, true);
+    if (!r)
+        return NULL;
+
+    if (r->cls != int_cls) {
+        raiseExcHelper(TypeError, "__hash__ did not return a int!");
+    }
+    return static_cast<BoxedInt*>(r);
 }
 
 Box* Box::reprIC() {

@@ -159,10 +159,11 @@ public:
     ICInvalidator dependent_icgetattrs;
 
     // TODO: these don't actually get deallocated right now
-    std::unique_ptr<CallattrIC> hasnext_ic, next_ic, repr_ic;
+    std::unique_ptr<CallattrIC> hasnext_ic, next_ic, repr_ic, hash_ic;
     std::unique_ptr<NonzeroIC> nonzero_ic;
     Box* callHasnextIC(Box* obj, bool null_on_nonexistent);
     Box* callNextIC(Box* obj);
+    Box* callHashIC(Box* obj, bool null_on_nonexistent);
     Box* callReprIC(Box* obj);
     bool callNonzeroIC(Box* obj);
 
