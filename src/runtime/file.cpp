@@ -438,10 +438,7 @@ Box* fileRead(BoxedFile* self, Box* _size) {
     }
     int64_t size = static_cast<BoxedInt*>(_size)->n;
 
-    Box* r = file_read(self, size);
-    if (!r)
-        throwCAPIException();
-    return r;
+    return CAPIException::throwIfNull(file_read(self, size));
 }
 
 static PyObject* file_readline(BoxedFile* f, int n = -1) noexcept {
@@ -462,10 +459,7 @@ static PyObject* file_readline(BoxedFile* f, int n = -1) noexcept {
 Box* fileReadline1(BoxedFile* self) {
     assert(self->cls == file_cls);
 
-    Box* r = file_readline(self);
-    if (!r)
-        throwCAPIException();
-    return r;
+    return CAPIException::throwIfNull(file_readline(self));
 }
 
 static PyObject* file_write(BoxedFile* f, Box* arg) noexcept {
@@ -666,10 +660,7 @@ error:
 Box* fileWrite(BoxedFile* self, Box* val) {
     assert(self->cls == file_cls);
 
-    Box* r = file_write(self, val);
-    if (!r)
-        throwCAPIException();
-    return r;
+    return CAPIException::throwIfNull(file_write(self, val));
 }
 
 static PyObject* file_flush(BoxedFile* f) noexcept {
@@ -693,10 +684,7 @@ static PyObject* file_flush(BoxedFile* f) noexcept {
 Box* fileFlush(BoxedFile* self) {
     RELEASE_ASSERT(self->cls == file_cls, "");
 
-    Box* r = file_flush(self);
-    if (!r)
-        throwCAPIException();
-    return r;
+    return CAPIException::throwIfNull(file_flush(self));
 }
 
 static PyObject* close_the_file(BoxedFile* f) {
@@ -900,13 +888,11 @@ Box* fileTell(BoxedFile* f) {
 Box* fileClose(BoxedFile* self) {
     assert(self->cls == file_cls);
 
-    PyObject* sts = close_the_file(self);
-    if (sts) {
-        PyMem_Free(self->f_setbuf);
-        self->f_setbuf = NULL;
-    } else {
-        throwCAPIException();
-    }
+    PyObject* sts = CAPIException::throwIfNull(close_the_file(self));
+
+    PyMem_Free(self->f_setbuf);
+    self->f_setbuf = NULL;
+
     return sts;
 }
 

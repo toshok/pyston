@@ -90,10 +90,7 @@ Box* classobjNew(Box* _cls, Box* _name, Box* _bases, Box** _args) {
 
     for (auto base : *bases) {
         if (!PyClass_Check(base) && PyCallable_Check(base->cls)) {
-            Box* r = PyObject_CallFunctionObjArgs(base->cls, name, bases, dict, NULL);
-            if (!r)
-                throwCAPIException();
-            return r;
+            return CAPIException::throwIfNull(PyObject_CallFunctionObjArgs(base->cls, name, bases, dict, NULL));
         }
     }
 
@@ -656,9 +653,7 @@ static Box* instanceIter(BoxedInstance* self) {
     PyObject* func;
 
     if ((func = _instanceGetattribute(self, boxStrConstant("__iter__"), false)) != NULL) {
-        PyObject* res = PyEval_CallObject(func, (PyObject*)NULL);
-        if (!res)
-            throwCAPIException();
+        PyObject* res = CAPIException::throwIfNull(PyEval_CallObject(func, (PyObject*)NULL));
 
         if (!PyIter_Check(res))
             raiseExcHelper(TypeError, "__iter__ returned non-iterator of type '%.100s'", res->cls->tp_name);
@@ -669,10 +664,7 @@ static Box* instanceIter(BoxedInstance* self) {
         raiseExcHelper(TypeError, "iteration over non-sequence");
     }
 
-    Box* r = PySeqIter_New((PyObject*)self);
-    if (!r)
-        throwCAPIException();
-    return r;
+    return CAPIException::throwIfNull(PySeqIter_New((PyObject*)self));
 }
 
 static Box* instanceNext(BoxedInstance* inst) {

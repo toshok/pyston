@@ -425,11 +425,7 @@ extern "C" Box* floatRMod(BoxedFloat* lhs, Box* rhs) {
 }
 
 extern "C" Box* floatPow(BoxedFloat* lhs, Box* rhs, Box* mod) {
-    Box* res = float_pow(lhs, rhs, mod);
-    if (!res) {
-        throwCAPIException();
-    }
-    return res;
+    return CAPIException::throwIfNull(float_pow(lhs, rhs, mod));
 }
 
 extern "C" Box* floatPowFloat(BoxedFloat* lhs, BoxedFloat* rhs, Box* mod = None) {

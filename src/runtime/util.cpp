@@ -22,8 +22,7 @@
 namespace pyston {
 
 void parseSlice(BoxedSlice* slice, int size, i64* out_start, i64* out_stop, i64* out_step, i64* out_length) {
-    int ret = PySlice_GetIndicesEx((PySliceObject*)slice, size, out_start, out_stop, out_step, out_length);
-    if (ret == -1)
-        throwCAPIException();
+    CAPIException::throwIfNeg1(
+        PySlice_GetIndicesEx((PySliceObject*)slice, size, out_start, out_stop, out_step, out_length));
 }
 }

@@ -1261,10 +1261,7 @@ Box* typeSubclasses(BoxedClass* self) {
 Box* typeMro(BoxedClass* self) {
     assert(isSubclass(self->cls, type_cls));
 
-    Box* r = mro_external(self);
-    if (!r)
-        throwCAPIException();
-    return r;
+    return CAPIException::throwIfNull(mro_external(self));
 }
 
 Box* moduleInit(BoxedModule* self, Box* name, Box* doc) {
@@ -2216,8 +2213,7 @@ static Box* typeBases(Box* b, void*) {
 static void typeSetBases(Box* b, Box* v, void* c) {
     RELEASE_ASSERT(isSubclass(b->cls, type_cls), "");
     BoxedClass* type = static_cast<BoxedClass*>(b);
-    if (type_set_bases(type, v, c) == -1)
-        throwCAPIException();
+    CAPIException::throwIfNeg1(type_set_bases(type, v, c));
 }
 
 // cls should be obj->cls.

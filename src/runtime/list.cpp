@@ -397,9 +397,7 @@ extern "C" Box* listSetitemSlice(BoxedList* self, BoxedSlice* slice, Box* v) {
         v = _listSlice(self, 0, self->size, 1, self->size);
 
     if (step != 1) {
-        int r = list_ass_ext_slice(self, slice, v);
-        if (r)
-            throwCAPIException();
+        CAPIException::throwIfNonzero(list_ass_ext_slice(self, slice, v));
         return None;
     }
     RELEASE_ASSERT(step == 1, "step sizes must be 1 for now");

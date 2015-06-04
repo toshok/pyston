@@ -1810,13 +1810,8 @@ Box* strStrip(BoxedString* self, Box* chars) {
     } else if (chars->cls == none_cls) {
         return boxString(str.trim(" \t\n\r\f\v"));
     } else if (isSubclass(chars->cls, unicode_cls)) {
-        PyObject* uniself = PyUnicode_FromObject((PyObject*)self);
-        PyObject* res;
-        if (uniself == NULL)
-            throwCAPIException();
-        res = _PyUnicode_XStrip((PyUnicodeObject*)uniself, BOTHSTRIP, chars);
-        if (!res)
-            throwCAPIException();
+        PyObject* uniself = CAPIException::throwIfNull(PyUnicode_FromObject((PyObject*)self));
+        PyObject* res = CAPIException::throwIfNull(_PyUnicode_XStrip((PyUnicodeObject*)uniself, BOTHSTRIP, chars));
         Py_DECREF(uniself);
         return res;
     } else {
@@ -1834,13 +1829,8 @@ Box* strLStrip(BoxedString* self, Box* chars) {
     } else if (chars->cls == none_cls) {
         return boxString(str.ltrim(" \t\n\r\f\v"));
     } else if (isSubclass(chars->cls, unicode_cls)) {
-        PyObject* uniself = PyUnicode_FromObject((PyObject*)self);
-        PyObject* res;
-        if (uniself == NULL)
-            throwCAPIException();
-        res = _PyUnicode_XStrip((PyUnicodeObject*)uniself, LEFTSTRIP, chars);
-        if (!res)
-            throwCAPIException();
+        PyObject* uniself = CAPIException::throwIfNull(PyUnicode_FromObject((PyObject*)self));
+        PyObject* res = CAPIException::throwIfNull(_PyUnicode_XStrip((PyUnicodeObject*)uniself, LEFTSTRIP, chars));
         Py_DECREF(uniself);
         return res;
     } else {
@@ -1858,13 +1848,8 @@ Box* strRStrip(BoxedString* self, Box* chars) {
     } else if (chars->cls == none_cls) {
         return boxString(str.rtrim(" \t\n\r\f\v"));
     } else if (isSubclass(chars->cls, unicode_cls)) {
-        PyObject* uniself = PyUnicode_FromObject((PyObject*)self);
-        PyObject* res;
-        if (uniself == NULL)
-            throwCAPIException();
-        res = _PyUnicode_XStrip((PyUnicodeObject*)uniself, RIGHTSTRIP, chars);
-        if (!res)
-            throwCAPIException();
+        PyObject* uniself = CAPIException::throwIfNull(PyUnicode_FromObject((PyObject*)self));
+        PyObject* res = CAPIException::throwIfNull(_PyUnicode_XStrip((PyUnicodeObject*)uniself, RIGHTSTRIP, chars));
         Py_DECREF(uniself);
         return res;
     } else {
@@ -1974,10 +1959,7 @@ Box* strContains(BoxedString* self, Box* elt) {
     assert(isSubclass(self->cls, str_cls));
 
     if (PyUnicode_Check(elt)) {
-        int r = PyUnicode_Contains(self, elt);
-        if (r < 0)
-            throwCAPIException();
-        return boxBool(r);
+        return boxBool(CAPIException::throwIfNegative(PyUnicode_Contains(self, elt)));
     }
 
     if (!isSubclass(elt->cls, str_cls))
@@ -2018,15 +2000,11 @@ Box* strStartswith(BoxedString* self, Box* elt, Box* start, Box** _args) {
 
     Py_ssize_t istart = 0, iend = PY_SSIZE_T_MAX;
     if (start) {
-        int r = _PyEval_SliceIndex(start, &istart);
-        if (!r)
-            throwCAPIException();
+        CAPIException::throwIfNonzero(_PyEval_SliceIndex(start, &istart));
     }
 
     if (end) {
-        int r = _PyEval_SliceIndex(end, &iend);
-        if (!r)
-            throwCAPIException();
+        CAPIException::throwIfNonzero(_PyEval_SliceIndex(end, &iend));
     }
 
     if (isSubclass(elt->cls, tuple_cls)) {
@@ -2040,9 +2018,7 @@ Box* strStartswith(BoxedString* self, Box* elt, Box* start, Box** _args) {
     }
 
     if (isSubclass(elt->cls, unicode_cls)) {
-        int r = PyUnicode_Tailmatch(self, elt, istart, iend, -1);
-        if (r < 0)
-            throwCAPIException();
+        int r = CAPIException::throwIfNegative(PyUnicode_Tailmatch(self, elt, istart, iend, -1));
         assert(r == 0 || r == 1);
         return boxBool(r);
     }
@@ -2081,21 +2057,15 @@ Box* strEndswith(BoxedString* self, Box* elt, Box* start, Box** _args) {
 
     Py_ssize_t istart = 0, iend = PY_SSIZE_T_MAX;
     if (start) {
-        int r = _PyEval_SliceIndex(start, &istart);
-        if (!r)
-            throwCAPIException();
+        CAPIException::throwIfNonzero(_PyEval_SliceIndex(start, &istart));
     }
 
     if (end) {
-        int r = _PyEval_SliceIndex(end, &iend);
-        if (!r)
-            throwCAPIException();
+        CAPIException::throwIfNonzero(_PyEval_SliceIndex(end, &iend));
     }
 
     if (isSubclass(elt->cls, unicode_cls)) {
-        int r = PyUnicode_Tailmatch(self, elt, istart, iend, +1);
-        if (r < 0)
-            throwCAPIException();
+        int r = CAPIException::throwIfNegative(PyUnicode_Tailmatch(self, elt, istart, iend, +1));
         assert(r == 0 || r == 1);
         return boxBool(r);
     }

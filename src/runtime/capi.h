@@ -35,6 +35,33 @@ void setCAPIException(const ExcInfo& e);
         else                                                                                                           \
             Py_FatalError((message));                                                                                  \
     } while (0)
+
+class CAPIException {
+public:
+    template <typename T> static T* throwIfNull(T* t) {
+        if (!t)
+            throwCAPIException();
+        return t;
+    }
+
+    template <typename T> static T throwIfNegative(T t) {
+        if (t < 0)
+            throwCAPIException();
+        return t;
+    }
+
+    template <typename T> static T throwIfNeg1(T t) {
+        if (t == -1)
+            throwCAPIException();
+        return t;
+    }
+
+    template <typename T> static T throwIfNonzero(T t) {
+        if (t != 0)
+            throwCAPIException();
+        return t;
+    }
+};
 }
 
 #endif

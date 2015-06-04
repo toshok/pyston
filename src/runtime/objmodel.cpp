@@ -137,19 +137,13 @@ size_t PyHasher::operator()(Box* b) const {
 bool PyEq::operator()(Box* lhs, Box* rhs) const {
     STAT_TIMER(t0, "us_timer_PyEq");
 
-    int r = PyObject_RichCompareBool(lhs, rhs, Py_EQ);
-    if (r == -1)
-        throwCAPIException();
-    return (bool)r;
+    return (bool)CAPIException::throwIfNeg1(PyObject_RichCompareBool(lhs, rhs, Py_EQ));
 }
 
 bool PyLt::operator()(Box* lhs, Box* rhs) const {
     STAT_TIMER(t0, "us_timer_PyLt");
 
-    int r = PyObject_RichCompareBool(lhs, rhs, Py_LT);
-    if (r == -1)
-        throwCAPIException();
-    return (bool)r;
+    return (bool)CAPIException::throwIfNeg1(PyObject_RichCompareBool(lhs, rhs, Py_LT));
 }
 
 extern "C" Box* deopt(AST_expr* expr, Box* value) {
@@ -1324,20 +1318,14 @@ Box* getattrInternalEx(Box* obj, llvm::StringRef attr, GetattrRewriteArgs* rewri
         if (obj->cls->tp_getattro && obj->cls->tp_getattro != PyObject_GenericGetAttr) {
             STAT_TIMER(t0, "us_timer_tp_getattro");
 
-            Box* r = obj->cls->tp_getattro(obj, boxString(attr));
-            if (!r)
-                throwCAPIException();
-            return r;
+            return CAPIException::throwIfNull(obj->cls->tp_getattro(obj, boxString(attr)));
         }
 
         if (obj->cls->tp_getattr) {
             STAT_TIMER(t0, "us_timer_tp_getattr");
 
             assert(attr.data()[attr.size()] == '\0');
-            Box* r = obj->cls->tp_getattr(obj, const_cast<char*>(attr.data()));
-            if (!r)
-                throwCAPIException();
-            return r;
+            return CAPIException::throwIfNull(obj->cls->tp_getattr(obj, const_cast<char*>(attr.data())));
         }
 
         // We could also use the old invalidation-based approach here:
@@ -1414,10 +1402,7 @@ Box* processDescriptorOrNull(Box* obj, Box* inst, Box* owner) {
     if (DEBUG >= 2)
         assert((obj->cls->tp_descr_get == NULL) == (typeLookup(obj->cls, get_str, NULL) == NULL));
     if (obj->cls->tp_descr_get) {
-        Box* r = obj->cls->tp_descr_get(obj, inst, owner);
-        if (!r)
-            throwCAPIException();
-        return r;
+        return CAPIException::throwIfNull(obj->cls->tp_descr_get(obj, inst, owner));
     }
     return NULL;
 }
@@ -1560,9 +1545,7 @@ Box* getattrInternalGeneric(Box* obj, llvm::StringRef attr, GetattrRewriteArgs* 
                             rewrite_args->out_rtn = crewrite_args.out_rtn;
                         }
                     } else {
-                        res = descr_get(descr, obj, obj->cls);
-                        if (!res)
-                            throwCAPIException();
+                        res = CAPIException::throwIfNull(descr_get(descr, obj, obj->cls));
                     }
                     return res;
                 }
@@ -1712,9 +1695,7 @@ Box* getattrInternalGeneric(Box* obj, llvm::StringRef attr, GetattrRewriteArgs* 
                     rewrite_args->out_rtn = crewrite_args.out_rtn;
                 }
             } else {
-                res = descr_get(descr, obj, obj->cls);
-                if (!res)
-                    throwCAPIException();
+                res = CAPIException::throwIfNull(descr_get(descr, obj, obj->cls));
             }
             return res;
         }
@@ -1958,9 +1939,8 @@ extern "C" void setattr(Box* obj, const char* attr, Box* attr_val) {
     if (obj->cls->tp_setattr) {
         STAT_TIMER(t1, "us_timer_tp_setattr");
 
-        int rtn = obj->cls->tp_setattr(obj, const_cast<char*>(attr), attr_val);
-        if (rtn)
-            throwCAPIException();
+        CAPIException::throwIfNonzero(obj->cls->tp_setattr(obj, const_cast<char*>(attr), attr_val));
+
         return;
     }
 
@@ -2033,9 +2013,7 @@ extern "C" void setattr(Box* obj, const char* attr, Box* attr_val) {
         runtimeCallInternal(setattr, NULL, ArgPassSpec(2), boxstr, attr_val, NULL, NULL, NULL);
     } else {
         STAT_TIMER(t0, "us_timer_tp_setattro");
-        int r = tp_setattro(obj, boxstr, attr_val);
-        if (r)
-            throwCAPIException();
+        CAPIException::throwIfNonzero(tp_setattro(obj, boxstr, attr_val));
     }
 }
 
@@ -2242,10 +2220,7 @@ extern "C" long PyObject_Hash(PyObject* v) noexcept {
 }
 
 int64_t hashUnboxed(Box* obj) {
-    auto r = PyObject_Hash(obj);
-    if (r == -1)
-        throwCAPIException();
-    return r;
+    return CAPIException::throwIfNeg1(PyObject_Hash(obj));
 }
 
 extern "C" BoxedInt* hash(Box* obj) {
@@ -3875,10 +3850,7 @@ extern "C" Box* compare(Box* lhs, Box* rhs, int op_type) {
             default:
                 RELEASE_ASSERT(0, "%d", op_type);
         }
-        Box* r = PyObject_RichCompare(lhs, rhs, cpython_op_type);
-        if (!r)
-            throwCAPIException();
-        return r;
+        return CAPIException::throwIfNull(PyObject_RichCompare(lhs, rhs, cpython_op_type));
     }
 }
 
