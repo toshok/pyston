@@ -138,6 +138,8 @@ void force() {
     FORCE(boxedLocalsGet);
     FORCE(boxedLocalsDel);
 
+    FORCE(threading::checkPendingThreadInterrupt);
+
     // FORCE(listIter);
 }
 }

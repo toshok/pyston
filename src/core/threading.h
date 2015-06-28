@@ -141,6 +141,8 @@ inline void allowGLReadPreemption() {
 }
 #endif
 
+void requestThreadInterrupt();
+void checkPendingThreadInterrupt();
 
 } // namespace threading
 } // namespace pyston

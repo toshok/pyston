@@ -481,7 +481,8 @@ extern "C" void endAllowThreads() noexcept {
 
 static pthread_mutex_t gil = PTHREAD_MUTEX_INITIALIZER;
 
-static std::atomic<int> threads_waiting_on_gil(0);
+std::atomic<bool> thread_interrupt_requested(false);
+std::atomic<int> threads_waiting_on_gil(0);
 static pthread_cond_t gil_acquired = PTHREAD_COND_INITIALIZER;
 
 extern "C" void PyEval_ReInitThreads() noexcept {
@@ -514,6 +515,7 @@ extern "C" void PyEval_ReInitThreads() noexcept {
 
 void acquireGLWrite() {
     threads_waiting_on_gil++;
+    requestThreadInterrupt();
     pthread_mutex_lock(&gil);
     threads_waiting_on_gil--;
 
@@ -523,6 +525,11 @@ void acquireGLWrite() {
 void releaseGLWrite() {
     pthread_mutex_unlock(&gil);
 }
+
+void requestThreadInterrupt() {
+    thread_interrupt_requested = true;
+}
+
 
 #define GIL_CHECK_INTERVAL 1000
 // Note: this doesn't need to be an atomic, since it should
@@ -536,6 +543,9 @@ int gil_check_count = 0;
 // We could enforce fairness by having a FIFO of events (implementd with mutexes?)
 // and make sure to always wake up the longest-waiting one.
 void allowGLReadPreemption() {
+    // we only get here when this was set to true, so reset it to false before we do anything else.
+    thread_interrupt_requested = false;
+
 #if ENABLE_SAMPLING_PROFILER
     if (unlikely(sigprof_pending)) {
         // Output multiple stacktraces if we received multiple signals

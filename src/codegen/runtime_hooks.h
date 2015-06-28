@@ -26,7 +26,7 @@ class Value;
 namespace pyston {
 
 struct GlobalFuncs {
-    llvm::Value* allowGLReadPreemption;
+    llvm::Value* checkPendingThreadInterrupt;
 
     llvm::Value* softspace;
 

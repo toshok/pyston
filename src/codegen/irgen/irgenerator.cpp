@@ -2661,9 +2661,9 @@ public:
 // If the sampling profiler is turned on (and eventually, destructors), we need frame-introspection
 // support while in allowGLReadPreemption:
 #if ENABLE_SAMPLING_PROFILER
-        emitter.createCall(UnwindInfo(next_statement, NULL), g.funcs.allowGLReadPreemption);
+        emitter.createCall(UnwindInfo(next_statement, NULL), g.funcs.checkPendingThreadInterrupt);
 #else
-        emitter.getBuilder()->CreateCall(g.funcs.allowGLReadPreemption);
+        emitter.getBuilder()->CreateCall(g.funcs.checkPendingThreadInterrupt);
 #endif
     }
 };

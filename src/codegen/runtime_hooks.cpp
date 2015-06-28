@@ -170,7 +170,7 @@ void initGlobalFuncs(GlobalState& g) {
     g.funcs.malloc = addFunc((void*)malloc, g.i8_ptr, g.i64);
     g.funcs.free = addFunc((void*)free, g.void_, g.i8_ptr);
 
-    g.funcs.allowGLReadPreemption = addFunc((void*)threading::allowGLReadPreemption, g.void_);
+    g.funcs.checkPendingThreadInterrupt = addFunc((void*)threading::checkPendingThreadInterrupt, g.void_);
 
     GET(softspace);
 

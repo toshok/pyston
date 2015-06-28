@@ -360,6 +360,7 @@ static void handle_sigusr1(int signum) {
 
 static void handle_sigprof(int signum) {
     sigprof_pending++;
+    pyston::threading::requestThreadInterrupt();
 }
 
 //#define INVESTIGATE_STAT_TIMER "us_timer_in_jitted_code"

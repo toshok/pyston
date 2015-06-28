@@ -36,7 +36,7 @@
 
 # adapted from https://github.com/shadow/shadow/blob/master/cmake/LLVMTools.cmake
 
-set(BC_INLINE_SRCS boxing.cpp dict.cpp link_forcer.cpp list.cpp tuple.cpp xrange.cpp)
+set(BC_INLINE_SRCS boxing.cpp dict.cpp link_forcer.cpp list.cpp tuple.cpp xrange.cpp threading.cpp)
 
 include_directories(${CMAKE_SOURCE_DIR}/src)
 

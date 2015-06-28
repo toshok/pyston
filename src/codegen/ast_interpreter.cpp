@@ -357,7 +357,7 @@ Value ASTInterpreter::executeInner(ASTInterpreter& interpreter, CFGBlock* start_
 
     // Important that this happens after RegisterHelper:
     interpreter.current_inst = start_at;
-    threading::allowGLReadPreemption();
+    threading::checkPendingThreadInterrupt();
     interpreter.current_inst = NULL;
 
     interpreter.current_block = start_block;
@@ -497,7 +497,7 @@ Value ASTInterpreter::visit_branch(AST_Branch* node) {
 Value ASTInterpreter::visit_jump(AST_Jump* node) {
     bool backedge = node->target->idx < current_block->idx && compiled_func;
     if (backedge)
-        threading::allowGLReadPreemption();
+        threading::checkPendingThreadInterrupt();
 
     if (ENABLE_OSR && backedge && edgecount++ == OSR_THRESHOLD_INTERPRETER) {
         bool can_osr = !FORCE_INTERPRETER && source_info->scoping->areGlobalsFromModule();
@@ -748,7 +748,7 @@ Value ASTInterpreter::visit_yield(AST_Yield* node) {
 
 Value ASTInterpreter::visit_stmt(AST_stmt* node) {
 #if ENABLE_SAMPLING_PROFILER
-    threading::allowGLReadPreemption();
+    threading::checkPendingThreadingInterrupt();
 #endif
 
     if (0) {
