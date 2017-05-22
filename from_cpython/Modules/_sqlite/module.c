@@ -33,7 +33,7 @@
 #define MODULE_NAME "sqlite3"
 
 #if SQLITE_VERSION_NUMBER >= 3003003
-#define HAVE_SHARED_CACHE
+//#define HAVE_SHARED_CACHE
 #endif
 
 /* static objects at module-level */

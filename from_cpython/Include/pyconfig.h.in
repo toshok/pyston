@@ -70,7 +70,9 @@
 #define HAVE_DLOPEN 1
 #define HAVE_DUP2 1
 #define HAVE_DYNAMIC_LOADING 1
+#ifndef __APPLE__
 #define HAVE_EPOLL 1
+#endif
 #define HAVE_ERF 1
 #define HAVE_ERFC 1
 #define HAVE_EXECV 1
@@ -78,7 +80,9 @@
 #define HAVE_FCHDIR 1
 #define HAVE_FCHMOD 1
 #define HAVE_FCHOWN 1
+#ifndef __APPLE__
 #define HAVE_FDATASYNC 1
+#endif
 #define HAVE_FINITE 1
 #define HAVE_FLOCK 1
 #define HAVE_FORK 1
@@ -110,11 +114,13 @@
 #define HAVE_GETPID 1
 #define HAVE_GETPRIORITY 1
 #define HAVE_GETPWENT 1
+#ifndef __APPLE__
 #define HAVE_GETRESGID 1
 #define HAVE_GETRESUID 1
 #define HAVE_GETSID 1
 #define HAVE_GETSPENT 1
 #define HAVE_GETSPNAM 1
+#endif
 #define HAVE_GETTIMEOFDAY 1
 #define HAVE_GETWD 1
 #define HAVE_HSTRERROR 1
@@ -143,6 +149,9 @@
 #define HAVE_MMAP 1
 #define HAVE_MREMAP 1
 #define HAVE_NICE 1
+#ifdef __APPLE__
+#define HAVE_OPENPTY 1
+#endif
 #define HAVE_PATHCONF 1
 #define HAVE_PAUSE 1
 #define HAVE_POLL 1
@@ -174,8 +183,10 @@
 #define HAVE_SETPGID 1
 #define HAVE_SETPGRP 1
 #define HAVE_SETREGID 1
+#ifndef __APPLE__
 #define HAVE_SETRESGID 1
 #define HAVE_SETRESUID 1
+#endif
 #define HAVE_SETREUID 1
 #define HAVE_SETSID 1
 #define HAVE_SETUID 1
@@ -187,7 +198,13 @@
 #define HAVE_SOCKADDR_STORAGE 1
 #define HAVE_SOCKETPAIR 1
 #define HAVE_SSIZE_T 1
+#ifdef __APPLE__
+#define HAVE_STAT_TV_NSEC2 1
+#define _DARWIN_FEATURE_64_BIT_INODE 1
+#define _XOPEN_SOURCE 1
+#else
 #define HAVE_STAT_TV_NSEC 1
+#endif
 #define HAVE_STATVFS 1
 #define HAVE_ST_BLOCKS 1
 #define HAVE_STDARG_PROTOTYPES 1

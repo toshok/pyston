@@ -1,3 +1,4 @@
+#if defined(HAVE_GETSPNAM) || defined(HAVE_GETSPENT)
 
 /* UNIX shadow password file access module */
 /* A lot of code has been taken from pwdmodule.c */
@@ -181,3 +182,4 @@ initspwd(void)
     PyModule_AddObject(m, "struct_spwd", (PyObject *) &StructSpwdType);
     initialized = 1;
 }
+#endif
