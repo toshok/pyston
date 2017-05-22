@@ -21,6 +21,10 @@
 
 #include "core/common.h"
 
+#ifdef __APPLE__
+#include <libkern/OSAtomic.h>
+#endif
+
 namespace pyston {
 namespace threading {
 
@@ -55,7 +59,11 @@ private:
     // NB. I tried using error-checking mutexes (PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP) here in debug-mode but got
     // some funky errors. I think we might be deliberately locking/unlocking mutexes on different threads in some
     // circumstances. - rntz
+#ifdef __APPLE__
+    pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+#else
     pthread_mutex_t mutex = PTHREAD_ADAPTIVE_MUTEX_INITIALIZER_NP;
+#endif
 
 public:
     void lock() {
@@ -122,13 +130,37 @@ public:
 
 class PthreadSpinLock {
 private:
+#ifdef __APPLE__
+    OSSpinLock spinlock;
+#else
     pthread_spinlock_t spinlock;
+#endif
 
 public:
-    PthreadSpinLock() { pthread_spin_init(&spinlock, false); }
+    PthreadSpinLock() :
+#ifdef __APPLE__
+        spinlock(0)
+#endif
+    {
+#ifndef __APPLE__
+        pthread_spin_init(&spinlock, false);
+#endif
+    }
 
-    void lock() { pthread_spin_lock(&spinlock); }
-    void unlock() { pthread_spin_unlock(&spinlock); }
+    void lock() {
+#ifdef __APPLE__
+        OSSpinLockLock(&spinlock);
+#else
+	pthread_spin_lock(&spinlock);
+#endif
+    }
+    void unlock() {
+#ifdef __APPLE__
+        OSSpinLockUnlock(&spinlock);
+#else
+	pthread_spin_unlock(&spinlock);
+#endif
+    }
 
     PthreadSpinLock* asRead() { return this; }
     PthreadSpinLock* asWrite() { return this; }

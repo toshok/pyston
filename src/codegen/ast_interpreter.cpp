@@ -1142,7 +1142,7 @@ Value ASTInterpreter::createFunction(BST_MakeFunction* node, BoxedCode* code) {
 
     RewriterVar* defaults_var = NULL;
     if (jit) {
-        defaults_var = node->num_defaults ? jit->allocate(node->num_defaults) : jit->imm(0ul);
+        defaults_var = node->num_defaults ? jit->allocate(node->num_defaults) : jit->imm(0ull);
         defaults_vars.reserve(node->num_defaults);
     }
 
@@ -1198,9 +1198,9 @@ Value ASTInterpreter::createFunction(BST_MakeFunction* node, BoxedCode* code) {
     Value rtn;
     if (jit) {
         if (!closure_var)
-            closure_var = jit->imm(0ul);
+            closure_var = jit->imm(0ull);
         if (!passed_globals_var)
-            passed_globals_var = jit->imm(0ul);
+            passed_globals_var = jit->imm(0ull);
         // TODO: have to track this GC ref
         rtn.var = jit->call(false, (void*)createFunctionFromMetadata, { jit->imm(code), closure_var, passed_globals_var,
                                                                         defaults_var, jit->imm(node->num_defaults) },
@@ -1344,7 +1344,7 @@ void ASTInterpreter::visit_deletesubslice(BST_DeleteSubSlice* node) {
     AUTO_XDECREF(upper.o);
 
     if (jit)
-        jit->emitAssignSlice(value, lower, upper, jit->imm(0ul));
+        jit->emitAssignSlice(value, lower, upper, jit->imm(0ull));
     assignSlice(value.o, lower.o, upper.o, NULL);
 }
 

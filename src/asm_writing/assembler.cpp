@@ -198,7 +198,7 @@ void Assembler::emitInt(int64_t n, int bytes) {
         emitByte(n & 0xff);
         n >>= 8;
     }
-    ASSERT(n == 0 || n == -1, "%ld", n);
+    ASSERT(n == 0 || n == -1, "%lld", n);
 }
 
 void Assembler::emitUInt(uint64_t n, int bytes) {
@@ -210,7 +210,7 @@ void Assembler::emitUInt(uint64_t n, int bytes) {
         emitByte(n & 0xff);
         n >>= 8;
     }
-    ASSERT(n == 0, "%lu", n);
+    ASSERT(n == 0, "%llu", n);
 }
 void Assembler::emitRex(uint8_t rex) {
     emitByte(rex | 0x40);
