@@ -49,17 +49,19 @@ file(GLOB_RECURSE FROM_CPYTHON_HEADERS ${CMAKE_SOURCE_DIR}/from_cpython/*.h)
 
 # set compiler
 if(CCACHE)
-  set(BC_CXX ${CCACHE} ${LLVM_TOOLS_BINARY_DIR}/clang++)
+  #set(BC_CXX ${CCACHE} ${LLVM_TOOLS_BINARY_DIR}/clang++)
+  set(BC_CXX ${CCACHE} clang++)
 else()
-  set(BC_CXX ${LLVM_TOOLS_BINARY_DIR}/clang++)
+  #set(BC_CXX ${LLVM_TOOLS_BINARY_DIR}/clang++)
+  set(BC_CXX clang++)
 endif()
 
 # set CXX flags
 set(BC_CXX_FLAGS "")
 if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-  separate_arguments(BC_CXX_FLAGS UNIX_COMMAND "${CMAKE_CXX_FLAGS} ${CLANG_FLAGS} ${CMAKE_CXX_FLAGS_DEBUG}")
+  separate_arguments(BC_CXX_FLAGS UNIX_COMMAND "${CMAKE_CXX_FLAGS} ${CLANG_FLAGS} ${CMAKE_CXX_FLAGS_DEBUG} -stdlib=libc++ -D_XOPEN_SOURCE")
 else()
-  separate_arguments(BC_CXX_FLAGS UNIX_COMMAND "${CMAKE_CXX_FLAGS} ${CLANG_FLAGS} ${CMAKE_CXX_FLAGS_RELEASE}")
+  separate_arguments(BC_CXX_FLAGS UNIX_COMMAND "${CMAKE_CXX_FLAGS} ${CLANG_FLAGS} ${CMAKE_CXX_FLAGS_RELEASE} -stdlib=libc++ -D_XOPEN_SOURCE")
   set(OPT_OPTIONS "-strip-debug")
   set(STDLIB_SUFFIX ".release")
 endif()
@@ -72,7 +74,7 @@ foreach(DEFINITION ${COMPILE_DEFINITIONS})
 endforeach(DEFINITION)
 
 # set includes
-set(BC_INCLUDES "")
+set(BC_INCLUDES "-I/usr/include/c++/4.2.1 -I/usr/include/c++/4.2.1/tr1")
 get_directory_property(INCLUDE_DIRECTORIES INCLUDE_DIRECTORIES)
 foreach(DIRECTORY ${INCLUDE_DIRECTORIES})
   list(APPEND BC_INCLUDES -I${DIRECTORY})
@@ -87,7 +89,7 @@ foreach(BC_SRC ${BC_INLINE_SRCS})
   # generate the bitcode for this file
   add_custom_command(OUTPUT ${BC_SRC_BASENAME}.bc
                      COMMAND ${BC_CXX} ${BC_DEFINES} ${BC_CXX_FLAGS} ${BC_INCLUDES} -c ${BC_SRC_FULLPATH} -o ${BC_SRC_BASENAME}.bc -emit-llvm
-                     DEPENDS copy_stdlib ${BC_SRC_FULLPATH} clang ${PYSTON_HEADERS} ${FROM_CPYTHON_HEADERS} libunwind
+                     DEPENDS copy_stdlib ${BC_SRC_FULLPATH} clang ${PYSTON_HEADERS} ${FROM_CPYTHON_HEADERS} #libunwind
                      COMMENT "Building LLVM bitcode ${BC_SRC_BASENAME}.bc"
                      VERBATIM)
   set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${BC_SRC_BASENAME}.bc)

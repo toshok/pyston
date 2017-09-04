@@ -31,7 +31,7 @@ inline void sliceIndex(Box* b, int64_t* out) {
         return;
     }
 
-    int ret = _PyEval_SliceIndex(b, out);
+    int ret = _PyEval_SliceIndex(b, (Py_ssize_t*)out);
     if (ret <= 0)
         throwCAPIException();
 }

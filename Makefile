@@ -6,10 +6,10 @@ print-%: ; @echo $($*)
 # Disable builtin rules:
 .SUFFIXES:
 
-DEPS_DIR := $(HOME)/pyston_deps
-
 SRC_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 BUILD_DIR := $(SRC_DIR)/build
+
+DEPS_DIR := $(shell realpath $(SRC_DIR)/../pyston_deps)
 
 LLVM_REVISION_FILE := llvm_revision.txt
 LLVM_REVISION := $(shell cat $(LLVM_REVISION_FILE))
@@ -118,8 +118,10 @@ ifneq ($(wildcard /usr/local/include/llvm),)
 $(error "Error: global llvm include files detected")
 endif
 
-CLANG_EXE := $(LLVM_BIN)/clang
-CLANGPP_EXE := $(LLVM_BIN)/clang++
+#CLANG_EXE := $(LLVM_BIN)/clang
+#CLANGPP_EXE := $(LLVM_BIN)/clang++
+CLANG_EXE := clang
+CLANGPP_EXE := clang++
 
 COMMON_CFLAGS := -g -Werror -Wreturn-type -Wall -Wno-sign-compare -Wno-unused -Isrc -Ifrom_cpython/Include -fno-omit-frame-pointer
 COMMON_CFLAGS += -Wextra -Wno-sign-compare
@@ -191,7 +193,7 @@ BUILD_SYSTEM_DEPS := Makefile Makefile.local $(wildcard build_system/*)
 CLANG_DEPS := $(CLANGPP_EXE)
 
 # settings to make clang and ccache play nicely:
-CLANG_CCACHE_FLAGS := -Qunused-arguments
+CLANG_CCACHE_FLAGS := -Qunused-parameters
 CLANG_EXTRA_FLAGS := -enable-tbaa -ferror-limit=$(ERROR_LIMIT) $(CLANG_CCACHE_FLAGS)
 ifeq ($(COLOR),1)
 	CLANG_EXTRA_FLAGS += -fcolor-diagnostics
@@ -634,7 +636,7 @@ cmake_check:
 	@cmake --version >/dev/null || (echo "cmake not available"; false)
 	@$(NINJA) --version >/dev/null || (echo "ninja not available"; false)
 
-COMMON_CMAKE_OPTIONS := $(SRC_DIR) -DTEST_THREADS=$(TEST_THREADS) $(CMAKE_VALGRIND) -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -GNinja
+COMMON_CMAKE_OPTIONS := $(SRC_DIR) -DTEST_THREADS=$(TEST_THREADS) $(CMAKE_VALGRIND) -DCMAKE_C_COMPILER=gcc-7 -DCMAKE_CXX_COMPILER=g++-7 -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -GNinja
 
 .PHONY: cmake_check clang_check
 $(CMAKE_SETUP_DBG):

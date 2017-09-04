@@ -9485,6 +9485,7 @@ INITFUNC(void)
                        (PyObject*) &StatVFSResultType);
     initialized = 1;
 
+#if 0
 #ifdef __APPLE__
     /*
      * Step 2 of weak-linking support on Mac OS X.
@@ -9522,6 +9523,7 @@ INITFUNC(void)
 
 
 #endif /* __APPLE__ */
+#endif
 
 }
 

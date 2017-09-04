@@ -132,7 +132,7 @@ const int BoxedList::INITIAL_CAPACITY = 8;
 void BoxedList::shrink() {
     // TODO more attention to the shrink condition to avoid frequent shrink and alloc
     if (allocated > size * 3) {
-        int new_allocated = std::max(static_cast<int64_t>(INITIAL_CAPACITY), allocated / 2);
+        int new_allocated = std::max(static_cast<int64_t>(INITIAL_CAPACITY), static_cast<int64_t>(allocated / 2));
         if (size > 0) {
             elts = GCdArray::grow(elts, new_allocated);
             allocated = new_allocated;
