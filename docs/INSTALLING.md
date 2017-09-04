@@ -1,6 +1,10 @@
 Pyston currently only supports installing from source; the following instructions have fairly tested as working on Ubuntu, and are extensively verified as not working on Mac.  (Please see issue [#165](https://github.com/dropbox/pyston/issues/165) for discussion on enabling OSX support, which is pretty difficult.)
 
-The build instructions assume that you will put the Pyston source code in `~/pyston` and put the dependencies in `~/pyston_deps`.  If you want to change the dependency dir, you'll have to change the value of the the `DEPS_DIR` variable in `CMakeLists.txt`.
+The build instructions assume you have set `PYSTON_ROOT` to the directory containing the Pyston source code:
+```
+export PYSTON_ROOT=~/src/pyston # or wherever you want to put it
+```
+
 
 # CMake build system
 
@@ -28,6 +32,11 @@ sudo apt-get install -yq automake git cmake ninja-build ccache libncurses5-dev l
 sudo yum install git make cmake clang gcc gcc-c++ ccache ninja-build xz-devel automake libtool gmp-devel mpfr-devel readline-devel openssl-devel sqlite-devel python-devel zlib-devel bzip2-devel ncurses-devel libffi-devel
 ```
 
+**OSX 10.12**
+```
+XXX(toshok) lots of stuff here
+```
+
 ### Additional prerequisites for running the integration tests
 **Ubuntu**
 ```
@@ -36,15 +45,16 @@ sudo apt-get install libgeoip-dev
 
 ### Building and testing
 ```
-git clone https://github.com/dropbox/pyston.git ~/pyston
+export PYSTON_ROOT=~/pyston # or wherever you want to put it
+git clone https://github.com/dropbox/pyston.git $PYSTON_ROOT
+cd $PYSTON_ROOT
 
-git clone https://github.com/llvm-mirror/llvm.git ~/pyston_deps/llvm-trunk
-git clone https://github.com/llvm-mirror/clang.git ~/pyston_deps/llvm-trunk/tools/clang
+git clone https://github.com/llvm-mirror/llvm.git $PYSTON_ROOT/../pyston_deps/llvm-trunk
+git clone https://github.com/llvm-mirror/clang.git $PYSTON_ROOT/../pyston_deps/llvm-trunk/tools/clang
 
 git config --global user.email "you@example.com"
 git config --global user.name "Your Name"
 
-cd ~/pyston
 git submodule update --init --recursive build_deps
 make llvm_up
 make
@@ -72,15 +82,15 @@ Pyston (and LLVM) requires a fairly modern [host compiler](http://llvm.org/docs/
 
 ```
 sudo apt-get install libgmp-dev libmpfr-dev libmpc-dev make build-essential libtool zip gcc-multilib autogen
-cd ~/pyston_deps
+cd $PYSTON_ROOT/../pyston_deps
 wget http://ftpmirror.gnu.org/gcc/gcc-4.8.2/gcc-4.8.2.tar.bz2
 tar xvf gcc-4.8.2.tar.bz2
 mkdir gcc-4.8.2-{build,install}
 cd gcc-4.8.2-build
 # Space- and time-saving configuration:
-../gcc-4.8.2/configure --disable-bootstrap --enable-languages=c,c++ --prefix=$HOME/pyston_deps/gcc-4.8.2-install
+../gcc-4.8.2/configure --disable-bootstrap --enable-languages=c,c++ --prefix=$PYSTON_ROOT/../pyston_deps/gcc-4.8.2-install
 # full configuration:
-# ../gcc-4.8.2/configure --prefix=$HOME/pyston_deps/gcc-4.8.2-install
+# ../gcc-4.8.2/configure --prefix=$PYSTON_ROOT/../pyston_deps/gcc-4.8.2-install
 # Specifying LIBRARY_PATH is a workaround to get gcc to compile on newer Ubuntus with multiarch
 LIBRARY_PATH=/usr/lib32 make -j4
 make check
@@ -92,7 +102,7 @@ make install
 A modern gdb is highly recommended; users on Ubuntu 12.04 should definitely update:
 
 ```
-cd ~/pyston_deps
+cd $PYSTON_ROOT/../pyston_deps
 wget http://ftp.gnu.org/gnu/gdb/gdb-7.6.2.tar.gz
 tar xvf gdb-7.6.2.tar.gz
 cd gdb-7.6.2
@@ -106,10 +116,10 @@ echo "GDB := \$(DEPS_DIR)/gdb-7.6.2/gdb/gdb --data-directory \$(DEPS_DIR)/gdb-7.
 
 GDB ships with python scripts that tell it how to pretty-print STL containers, but they only work against the stdlib in the corresponding version of GCC. Unfortunately, we compile against an old version of gcc's C++ stdlib. Here's how to get GDB to use the *old* pretty-print scripts for GCC 4.8.2. (Note: Have only tested this with gdb 7.8.1-ubuntu4 and gcc-4.8.2.)
 
-If you've built GCC, the GDB scripts will be in `~/pyston_deps/gcc-4.8.2-install/share/gcc-4.8.2/python`. Unfortunately they're for Python 2, and GDB 7.8.1 uses Python 3. So we'll use `2to3` to update them:
+If you've built GCC, the GDB scripts will be in `$PYSTON_ROOT/../pyston_deps/gcc-4.8.2-install/share/gcc-4.8.2/python`. Unfortunately they're for Python 2, and GDB 7.8.1 uses Python 3. So we'll use `2to3` to update them:
 
 ```
-cd ~/pyston_deps/gcc-4.8.2-install/share/gcc-4.8.2/python/libstdcxx/v6
+cd $PYSTON_ROOT/../pyston_deps/gcc-4.8.2-install/share/gcc-4.8.2/python/libstdcxx/v6
 2to3 -w printers.py
 ```
 
@@ -118,7 +128,7 @@ Don't worry, `2to3` makes a backup of the file it changes if you need to go back
 ```
 python
 import sys
-sys.path.insert(0, '/YOUR/HOME/DIR/pyston_deps/gcc-4.8.2-install/share/gcc-4.8.2/python')
+sys.path.insert(0, '/YOUR/PYSTON_ROOT/../pyston_deps/gcc-4.8.2-install/share/gcc-4.8.2/python')
 from libstdcxx.v6.printers import register_libstdcxx_printers
 register_libstdcxx_printers(None)
 print('--- Registered cxx printers for gcc 4.8.2! ---')
@@ -131,7 +141,7 @@ And there you go!
 gold is highly recommended as a faster linker, and Pyston contains build-system support for automatically using gold if available.  gold may already be installed on your system; you can check by typing `which gold`.  If it's not installed already:
 
 ```
-cd ~/pyston_deps
+cd $PYSTON_ROOT/../pyston_deps
 sudo apt-get install bison
 wget http://ftp.gnu.org/gnu/binutils/binutils-2.24.tar.gz
 tar xvf binutils-2.24.tar.gz
@@ -161,12 +171,12 @@ Since Pyston uses a custom memory allocator, it makes use of the valgrind client
 To install:
 
 ```
-cd ~/pyston_deps
+cd $PYSTON_ROOT/../pyston_deps
 wget http://valgrind.org/downloads/valgrind-3.10.0.tar.bz2
 tar xvf valgrind-3.10.0.tar.bz2
 mkdir valgrind-3.10.0-install
 cd valgrind-3.10.0
-./configure --prefix=$HOME/pyston_deps/valgrind-3.10.0-install
+./configure --prefix=$PYSTON_ROOT/../pyston_deps/valgrind-3.10.0-install
 make -j4
 make install
 sudo apt-get install libc6-dbg
@@ -186,7 +196,7 @@ Having a debug-enabled CPython can be useful for debugging issues with our exten
 
 ```
 sudo apt-get install python2.7-dbg
-cd ~/pyston_deps
+cd $PYSTON_ROOT/../pyston_deps
 mkdir python-src
 cd python-src
 apt-get source python2.7-dbg

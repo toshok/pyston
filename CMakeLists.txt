@@ -6,7 +6,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 include(pyconfig)
 include(ExternalProject)
 
-set(DEPS_DIR $ENV{HOME}/pyston_deps)
+set(DEPS_DIR $ENV{PYSTON_ROOT}/../pyston_deps)
 
 if (NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
     message(FATAL_ERROR "Pyston does not support 32-bit systems yet")
@@ -143,19 +143,19 @@ add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/gitmodules
 add_custom_target(gitsubmodules DEPENDS ${CMAKE_BINARY_DIR}/gitmodules)
 
 # jemalloc
-ExternalProject_Add(libjemalloc
-                    BUILD_BYPRODUCTS ${CMAKE_BINARY_DIR}/jemalloc/lib/libjemalloc.a
-                    PREFIX jemalloc-build
-                    SOURCE_DIR ${CMAKE_SOURCE_DIR}/build_deps/jemalloc
-                    DEPENDS gitsubmodules
-                    UPDATE_COMMAND autoconf
-                    CONFIGURE_COMMAND ${CMAKE_SOURCE_DIR}/build_deps/jemalloc/configure --prefix=${CMAKE_BINARY_DIR}/jemalloc --enable-autogen --enable-prof --enable-prof-libunwind
-                    BUILD_COMMAND ${MAKE_PRG}
-                    INSTALL_COMMAND ${MAKE_PRG} install_bin install_lib
-                    LOG_UPDATE ON
-                    LOG_CONFIGURE ON
-                    LOG_BUILD ON
-                    LOG_INSTALL ON)
+#ExternalProject_Add(libjemalloc
+#                    BUILD_BYPRODUCTS ${CMAKE_BINARY_DIR}/jemalloc/lib/libjemalloc.a
+#                    PREFIX jemalloc-build
+#                    SOURCE_DIR ${CMAKE_SOURCE_DIR}/build_deps/jemalloc
+#                    DEPENDS gitsubmodules
+#                    UPDATE_COMMAND autoconf
+#                    CONFIGURE_COMMAND ${CMAKE_SOURCE_DIR}/build_deps/jemalloc/configure --prefix=${CMAKE_BINARY_DIR}/jemalloc --enable-autogen --enable-prof --enable-prof-libunwind
+#                    BUILD_COMMAND ${MAKE_PRG}
+#                    INSTALL_COMMAND ${MAKE_PRG} install_bin install_lib
+#                    LOG_UPDATE ON
+#                    LOG_CONFIGURE ON
+#                    LOG_BUILD ON
+#                    LOG_INSTALL ON)
 
 #
 # CMake (<3.3) does not support BUILD_BYPRODUCTS.
@@ -168,7 +168,7 @@ ExternalProject_Add(libjemalloc
 #
 # Hack option #2: the existence of the custom target tells ninja that libjemalloc.a will get built somehow.
 # The name of the target doesn't matter.
-add_custom_target(libjemalloc_byproducts DEPENDS ${CMAKE_BINARY_DIR}/jemalloc/lib/libjemalloc.a)
+# add_custom_target(libjemalloc_byproducts DEPENDS ${CMAKE_BINARY_DIR}/jemalloc/lib/libjemalloc.a)
 #
 # Hack option #3: delete the .so's and use `-ljemalloc` on the link line so that ninja doesn't know about the dependency.
 # ExternalProject_Add_Step(libjemalloc disable_shared
@@ -314,8 +314,9 @@ add_executable(pyston $<TARGET_OBJECTS:PYSTON_MAIN_OBJECT> $<TARGET_OBJECTS:PYST
 add_custom_command(TARGET pyston POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_BINARY_DIR}/pyston ${CMAKE_BINARY_DIR}/python DEPENDS pyston)
 
 # Wrap the stdlib in --whole-archive to force all the symbols to be included and eventually exported
-target_link_libraries(pyston -Wl,--whole-archive stdlib -Wl,--no-whole-archive pthread m z readline sqlite3 gmp mpfr ssl crypto liblz4 util ${LLVM_LIBS} ${LIBLZMA_LIBRARIES} ${OPTIONAL_LIBRARIES} ${CMAKE_BINARY_DIR}/jemalloc/lib/libjemalloc.a unwind)
-add_dependencies(pyston libjemalloc)
+target_link_libraries(pyston -Wl,--whole-archive stdlib -Wl,--no-whole-archive pthread m z readline sqlite3 gmp mpfr ssl crypto liblz4 util ${LLVM_LIBS} ${LIBLZMA_LIBRARIES} ${OPTIONAL_LIBRARIES})
+# ... ${CMAKE_BINARY_DIR}/jemalloc/lib/libjemalloc.a unwind)
+#add_dependencies(pyston libjemalloc)
 
 # test
 enable_testing()
