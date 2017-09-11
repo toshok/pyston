@@ -45,11 +45,13 @@
 
 namespace pyston {
 
+llvm::DenseMap<uint64_t /*ip*/, std::vector<Location>> decref_infos;
 void addDecrefInfoEntry(uint64_t ip, std::vector<class Location> location) {
-    abort();
+    assert(!decref_infos.count(ip) && "why is there already an entry??");
+    decref_infos[ip] = std::move(location);
 }
 void removeDecrefInfoEntry(uint64_t ip) {
-    abort();
+    decref_infos.erase(ip);
 }
 
 
@@ -63,23 +65,55 @@ llvm::JITEventListener* makeTracebacksListener() {
     return new TracebacksEventListener();
 }
 
+static FrameInfo* getTopFrameInfo() {
+    return (FrameInfo*)cur_thread_state.frame_info;
+}
+
 ExcInfo* getFrameExcInfo() {
-    abort();
+    std::vector<ExcInfo*> to_update;
+    ExcInfo* copy_from_exc = NULL;
+    ExcInfo* cur_exc = NULL;
+
+    FrameInfo* frame_info = getTopFrameInfo();
+    while (frame_info) {
+        if (copy_from_exc)
+            to_update.push_back(copy_from_exc);
+
+        copy_from_exc = &frame_info->exc;
+        if (!cur_exc)
+            cur_exc = copy_from_exc;
+
+        if (copy_from_exc->type)
+            break;
+
+        frame_info = frame_info->back;
+    };
+
+    assert(copy_from_exc); // Only way this could still be NULL is if there weren't any python frames
+
+    if (!copy_from_exc->type) {
+        // No exceptions found:
+        *copy_from_exc = ExcInfo(incref(Py_None), incref(Py_None), NULL);
+    }
+
+    for (auto* ex : to_update) {
+        assert(ex != copy_from_exc);
+        *ex = *copy_from_exc;
+        Py_INCREF(ex->type);
+        Py_INCREF(ex->value);
+        Py_XINCREF(ex->traceback);
+    }
+    assert(cur_exc);
+    return cur_exc;
 }
 
 void RegisterEHFrame::updateAndRegisterFrameFromTemplate(uint64_t code_addr, size_t code_size, uint64_t eh_frame_addr,
-                                                         size_t eh_frame_size) {
-    abort();
-}
+                                                         size_t eh_frame_size) {}
 
 void RegisterEHFrame::registerFrame(uint64_t code_addr, size_t code_size, uint64_t eh_frame_addr,
-                                    size_t eh_frame_size) {
-    abort();
-}
+                                    size_t eh_frame_size) {}
 
-void RegisterEHFrame::deregisterFrame() {
-    abort();
-}
+void RegisterEHFrame::deregisterFrame() {}
 
 DeoptState getDeoptState() {
     abort();
@@ -90,23 +124,46 @@ void updateFrameExcInfoIfNeeded(ExcInfo* latest) {
 }
 
 BoxedCode* getTopPythonFunction() {
-    abort();
+    FrameInfo* frame_info = getTopFrameInfo();
+    if (!frame_info)
+        return NULL;
+    return frame_info->code;
 }
 
 BORROWED(Box*) getGlobals() {
-    abort();
+    FrameInfo* frame_info = getTopFrameInfo();
+    if (!frame_info)
+        return NULL;
+    return frame_info->globals;
 }
 
 BORROWED(Box*) getGlobalsDict() {
-    abort();
+    Box* globals = getGlobals();
+    if (globals && PyModule_Check(globals))
+        globals = globals->getAttrWrapper();
+    return globals;
 }
 
 BORROWED(BoxedModule*) getCurrentModule() {
-    abort();
+    BoxedCode* code = getTopPythonFunction();
+    if (!code)
+        return NULL;
+    return code->source->parent_module;
 }
 
 FrameInfo* getPythonFrameInfo(int depth) {
-    abort();
+    FrameInfo* frame_info = getTopFrameInfo();
+    while (depth > 0) {
+        if (!frame_info)
+            return NULL;
+        frame_info = frame_info->back;
+        --depth;
+    }
+    if (!frame_info)
+        return NULL;
+    assert(frame_info->globals);
+    assert(frame_info->code);
+    return frame_info;
 }
 
 BORROWED(Box*) fastLocalsToBoxedLocals() {

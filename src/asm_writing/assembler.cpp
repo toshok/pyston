@@ -443,8 +443,7 @@ void Assembler::mov_generic(Indirect src, Register dest, MovType type) {
 }
 
 void Assembler::mov_generic(Immediate src, Indirect dest, MovType type) {
-    int64_t src_val = src.val;
-    assert(fitsInto<int32_t>(src_val));
+    assert(src.fitsInto32Bit());
 
     assert((type == MovType::Q || type == MovType::L) && "we only support this modes for now");
     int rex = type == MovType::Q ? REX_W : 0;
@@ -473,7 +472,7 @@ void Assembler::mov_generic(Immediate src, Indirect dest, MovType type) {
         emitInt(dest.offset, 4);
     }
 
-    emitInt(src_val, 4);
+    emitInt(src.val, 4);
 }
 
 void Assembler::mov_generic(Register src, Indirect dest, MovType type) {
@@ -785,6 +784,7 @@ void Assembler::decl(Indirect mem) {
 }
 
 void Assembler::incl(Immediate imm) {
+    assert(imm.fitsInto32Bit());
     emitByte(0xff);
     emitByte(0x04);
     emitByte(0x25);
@@ -792,6 +792,7 @@ void Assembler::incl(Immediate imm) {
 }
 
 void Assembler::decl(Immediate imm) {
+    assert(imm.fitsInto32Bit());
     emitByte(0xff);
     emitByte(0x0c);
     emitByte(0x25);
@@ -852,6 +853,7 @@ void Assembler::decq(Indirect mem) {
 }
 
 void Assembler::incq(Immediate imm) {
+    assert(imm.fitsInto32Bit());
     emitByte(0x48);
     emitByte(0xff);
     emitByte(0x04);
@@ -860,6 +862,7 @@ void Assembler::incq(Immediate imm) {
 }
 
 void Assembler::decq(Immediate imm) {
+    assert(imm.fitsInto32Bit());
     emitByte(0x48);
     emitByte(0xff);
     emitByte(0x0c);
@@ -867,9 +870,10 @@ void Assembler::decq(Immediate imm) {
     emitInt(imm.val, 4);
 }
 
-void Assembler::call(Immediate imm) {
+void Assembler::call(Immediate offset_imm) {
+    assert(fitsInto<int32_t>(offset_imm.val));
     emitByte(0xe8);
-    emitInt(imm.val, 4);
+    emitInt(offset_imm.val, 4);
 }
 
 void Assembler::callq(Register r) {
@@ -937,8 +941,7 @@ void Assembler::cmp(Register reg, Immediate imm, MovType type) {
 }
 
 void Assembler::cmp(Indirect mem, Immediate imm, MovType type) {
-    int64_t val = imm.val;
-    assert(fitsInto<int32_t>(val));
+    assert(imm.fitsInto32Bit());
 
     int src_idx = mem.base.regnum;
     assert(type == MovType::Q || type == MovType::L);
@@ -973,7 +976,7 @@ void Assembler::cmp(Indirect mem, Immediate imm, MovType type) {
         emitInt(mem.offset, 4);
     }
 
-    emitInt(val, 4);
+    emitInt(imm.val, 4);
 }
 
 void Assembler::cmp(Indirect mem, Register reg) {

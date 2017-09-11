@@ -40,7 +40,6 @@ static std::deque<uint64_t> available_addrs;
 // There should be a better way of getting this:
 #define PAGE_SIZE 4096
 
-#define INITIAL_STACK_SIZE (8 * PAGE_SIZE)
 #define STACK_REDZONE_SIZE PAGE_SIZE
 #define MAX_STACK_SIZE (4 * 1024 * 1024)
 
@@ -494,40 +493,30 @@ extern "C" BoxedGenerator::BoxedGenerator(BoxedFunctionBase* function, Box* arg1
     static StatCounter generator_stack_reused("generator_stack_reused");
     static StatCounter generator_stack_created("generator_stack_created");
 
-    void* initial_stack_limit;
     if (available_addrs.size() == 0) {
         generator_stack_created.log();
 
         uint64_t stack_low = next_stack_addr;
         uint64_t stack_high = stack_low + MAX_STACK_SIZE;
+        uint64_t redzone_low;
         next_stack_addr = stack_high;
 
 #if STACK_GROWS_DOWN
         this->stack_begin = (void*)stack_high;
 
-        initial_stack_limit = (void*)(stack_high - INITIAL_STACK_SIZE);
-        void* p = mmap(initial_stack_limit, INITIAL_STACK_SIZE, PROT_READ | PROT_WRITE,
-                       MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS
-#if defined(MAP_GROWSDOWN)
-                           | MAP_GROWSDOWN
-#endif
-                       ,
-                       -1, 0);
-        ASSERT(p == initial_stack_limit, "%p %s", p, strerror(errno));
+        void* p = mmap((void*)stack_low, MAX_STACK_SIZE, PROT_READ | PROT_WRITE,
+                       MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
+        ASSERT(p == (void*)stack_low, "%p %s", p, strerror(errno));
 
-        // Create an inaccessible redzone so that the generator stack won't grow indefinitely.
-        // Looks like it throws a SIGBUS if we reach the redzone; it's unclear if that's better
-        // or worse than being able to consume all available memory.
+        // create a redzone below the stack
+        redzone_low = stack_low - STACK_REDZONE_SIZE;
         void* p2
-            = mmap((void*)stack_low, STACK_REDZONE_SIZE, PROT_NONE, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
-        assert(p2 == (void*)stack_low);
-        // Interestingly, it seems like MAP_GROWSDOWN will leave a page-size gap between the redzone and the growable
-        // region.
+            = mmap((void*)redzone_low, STACK_REDZONE_SIZE, PROT_NONE, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
+        assert(p2 == (void*)redzone_low);
 
         if (VERBOSITY() >= 3) {
-            printf("Created new generator stack, starts at %p, currently extends to %p\n", (void*)stack_high,
-                   initial_stack_limit);
-            printf("Created a redzone from %p-%p\n", (void*)stack_low, (void*)(stack_low + STACK_REDZONE_SIZE));
+            printf("Created new generator stack, starts at %p, extends to %p\n", (void*)stack_high, (void*)stack_low);
+            printf("Created a redzone from %p-%p\n", (void*)redzone_low, (void*)stack_low);
         }
 #else
 #error "implement me"
@@ -538,7 +527,6 @@ extern "C" BoxedGenerator::BoxedGenerator(BoxedFunctionBase* function, Box* arg1
 #if STACK_GROWS_DOWN
         uint64_t stack_high = available_addrs.back();
         this->stack_begin = (void*)stack_high;
-        initial_stack_limit = (void*)(stack_high - INITIAL_STACK_SIZE);
         available_addrs.pop_back();
 #else
 #error "implement me"

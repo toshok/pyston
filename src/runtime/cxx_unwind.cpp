@@ -748,8 +748,10 @@ uint64_t getCXXUnwindSymbolAddress(llvm::StringRef sym) {
 #else // __APPLE__
 
 namespace pyston {
+static __thread int num_uncaught_exceptions = 0;
+
 bool isUnwinding() {
-    abort();
+    return num_uncaught_exceptions > 0;
 }
 
 uint64_t getCXXUnwindSymbolAddress(llvm::StringRef sym) {

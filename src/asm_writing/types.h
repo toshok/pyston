@@ -291,9 +291,9 @@ public:
     constexpr Location(assembler::XMMRegister reg) : type(XMMRegister), regnum(reg.regnum) {}
 
     constexpr Location(assembler::GenericRegister reg)
-        : type(reg.type == assembler::GenericRegister::GP ? Register : reg.type == assembler::GenericRegister::XMM
-                                                                           ? XMMRegister
-                                                                           : None),
+        : type(reg.type == assembler::GenericRegister::GP
+                   ? Register
+                   : reg.type == assembler::GenericRegister::XMM ? XMMRegister : None),
           regnum(reg.type == assembler::GenericRegister::GP ? reg.gp.regnum : reg.xmm.regnum) {}
 
     assembler::Register asRegister() const;

@@ -28,7 +28,7 @@ static const assembler::Register std_allocatable_regs[] = {
     assembler::RAX, assembler::RCX, assembler::RDX,
     // no RSP
     // no RBP
-    assembler::RDI, assembler::RSI, assembler::R8,  assembler::R9, assembler::R10, assembler::R11,
+    assembler::RDI, assembler::RSI, assembler::R8, assembler::R9, assembler::R10, assembler::R11,
 
     // For now, cannot allocate callee-save registers since we do not restore them properly
     // at potentially-throwing callsites.
@@ -144,8 +144,7 @@ void Location::dump() const {
     RELEASE_ASSERT(0, "%d", type);
 }
 
-Rewriter::ConstLoader::ConstLoader(Rewriter* rewriter) : rewriter(rewriter) {
-}
+Rewriter::ConstLoader::ConstLoader(Rewriter* rewriter) : rewriter(rewriter) {}
 
 bool Rewriter::ConstLoader::tryRegRegMove(uint64_t val, assembler::Register dst_reg) {
     assert(rewriter->phase_emitting);
@@ -346,19 +345,21 @@ void RewriterVar::addGuardNotEq(uint64_t val) {
 }
 
 void RewriterVar::addGuardNotLt0() {
-    rewriter->addAction([=]() {
-        assembler::Register var_reg = this->getInReg();
-        rewriter->assembler->test(var_reg, var_reg);
+    rewriter->addAction(
+        [=]() {
+            assembler::Register var_reg = this->getInReg();
+            rewriter->assembler->test(var_reg, var_reg);
 
-        rewriter->restoreArgs(); // can only do movs, doesn't affect flags, so it's safe
-        rewriter->assertArgsInPlace();
+            rewriter->restoreArgs(); // can only do movs, doesn't affect flags, so it's safe
+            rewriter->assertArgsInPlace();
 
-        rewriter->_nextSlotJump(assembler::COND_SIGN);
+            rewriter->_nextSlotJump(assembler::COND_SIGN);
 
-        bumpUse();
-        rewriter->assertConsistent();
+            bumpUse();
+            rewriter->assertConsistent();
 
-    }, { this }, ActionType::GUARD);
+        },
+        { this }, ActionType::GUARD);
 }
 
 void RewriterVar::addAttrGuard(int offset, uint64_t val, bool negate) {
@@ -519,10 +520,12 @@ public:
 };
 
 void RewriterVar::incref() {
-    rewriter->addAction([=]() {
-        rewriter->_incref(this);
-        this->bumpUse();
-    }, { this }, ActionType::MUTATION);
+    rewriter->addAction(
+        [=]() {
+            rewriter->_incref(this);
+            this->bumpUse();
+        },
+        { this }, ActionType::MUTATION);
 }
 
 void RewriterVar::decref() {
@@ -544,19 +547,21 @@ void Rewriter::_incref(RewriterVar* var, int num_refs) {
     }
 
     assert(!var->nullable);
-// assembler->trap();
-// auto reg = var->getInReg();
-// assembler->incl(assembler::Indirect(reg, offsetof(Box, ob_refcnt)));
-
-// this->_trap();
-
-// this->_call(NULL, true, false /* can't throw */, (void*)Helper::incref, { var });
-
-#ifdef Py_REF_DEBUG
     // assembler->trap();
-    for (int i = 0; i < num_refs; ++i)
-        assembler->incq(assembler::Immediate(&_Py_RefTotal));
-#endif
+    // auto reg = var->getInReg();
+    // assembler->incl(assembler::Indirect(reg, offsetof(Box, ob_refcnt)));
+
+    // this->_trap();
+
+    // this->_call(NULL, true, false /* can't throw */, (void*)Helper::incref, { var });
+
+    /*
+    #ifdef Py_REF_DEBUG
+        // assembler->trap();
+        for (int i = 0; i < num_refs; ++i)
+            assembler->incq(assembler::Immediate(&_Py_RefTotal));
+    #endif
+    */
 
     if (var->isConstant() && !Rewriter::isLargeConstant(var->constant_value)) {
         for (int i = 0; i < num_refs; i++) {
@@ -577,14 +582,16 @@ void Rewriter::_incref(RewriterVar* var, int num_refs) {
 
 void Rewriter::_decref(RewriterVar* var, llvm::ArrayRef<RewriterVar*> vars_to_bump) {
     assert(!var->nullable);
-// assembler->trap();
-
-// this->_call(NULL, true, false /* can't throw */, (void*)Helper::decref, { var }, {}, vars_to_bump);
-
-#ifdef Py_REF_DEBUG
     // assembler->trap();
-    assembler->decq(assembler::Immediate(&_Py_RefTotal));
-#endif
+
+    // this->_call(NULL, true, false /* can't throw */, (void*)Helper::decref, { var }, {}, vars_to_bump);
+
+    /*
+    #ifdef Py_REF_DEBUG
+        // assembler->trap();
+        assembler->decq(assembler::Immediate(&_Py_RefTotal));
+    #endif
+    */
     _setupCall(true, { var }, {}, assembler::RAX, vars_to_bump);
 
 
@@ -728,8 +735,8 @@ void Rewriter::_setAttr(RewriterVar* ptr, int offset, RewriterVar* val, assemble
     if (LOG_IC_ASSEMBLY)
         assembler->comment("_setAttr");
 
-    assert((store_wide == assembler::MovType::Q
-           || store_wide == assembler::MovType::L) && "we only support this modes for now");
+    assert((store_wide == assembler::MovType::Q || store_wide == assembler::MovType::L)
+           && "we only support this modes for now");
 
     if (ptr->isScratchAllocation()) {
         auto dest_loc = indirectFor(ptr->getScratchLocation(offset));
@@ -1012,10 +1019,12 @@ RewriterVar* Rewriter::call(bool has_side_effects, void* func_addr, llvm::ArrayR
     assert(lambda_closure.argsXmm().size() == args_xmm.size());
     assert(lambda_closure.additionalUses().size() == additional_uses.size());
 
-    addAction([this, result, func_addr, lambda_closure]() {
-        this->_call(result, lambda_closure.has_side_effects, lambda_closure.can_throw, func_addr, lambda_closure.args(),
-                    lambda_closure.argsXmm(), lambda_closure.allArgs());
-    }, lambda_closure.allArgs(), type);
+    addAction(
+        [this, result, func_addr, lambda_closure]() {
+            this->_call(result, lambda_closure.has_side_effects, lambda_closure.can_throw, func_addr,
+                        lambda_closure.args(), lambda_closure.argsXmm(), lambda_closure.allArgs());
+        },
+        lambda_closure.allArgs(), type);
 
     return result;
 }
@@ -1370,21 +1379,25 @@ bool RewriterVar::needsDecref(int current_action_index) {
 }
 
 void RewriterVar::registerOwnedAttr(int byte_offset) {
-    rewriter->addAction([=]() {
-        auto p = std::make_pair(this, byte_offset);
-        assert(!this->rewriter->owned_attrs.count(p));
-        this->rewriter->owned_attrs.insert(p);
-        this->bumpUse();
-    }, { this }, ActionType::NORMAL);
+    rewriter->addAction(
+        [=]() {
+            auto p = std::make_pair(this, byte_offset);
+            assert(!this->rewriter->owned_attrs.count(p));
+            this->rewriter->owned_attrs.insert(p);
+            this->bumpUse();
+        },
+        { this }, ActionType::NORMAL);
 }
 
 void RewriterVar::deregisterOwnedAttr(int byte_offset) {
-    rewriter->addAction([=]() {
-        auto p = std::make_pair(this, byte_offset);
-        assert(this->rewriter->owned_attrs.count(p));
-        this->rewriter->owned_attrs.erase(p);
-        this->bumpUse();
-    }, { this }, ActionType::NORMAL);
+    rewriter->addAction(
+        [=]() {
+            auto p = std::make_pair(this, byte_offset);
+            assert(this->rewriter->owned_attrs.count(p));
+            this->rewriter->owned_attrs.erase(p);
+            this->bumpUse();
+        },
+        { this }, ActionType::NORMAL);
 }
 
 Location RewriterVar::getScratchLocation(int additional_offset_in_bytes) {
@@ -1729,12 +1742,14 @@ void Rewriter::commitReturning(RewriterVar* var) {
 
     ASSERT(var->reftype != RefType::UNKNOWN, "%p", var);
 
-    addAction([=]() {
-        if (LOG_IC_ASSEMBLY)
-            assembler->comment("commitReturning");
-        var->getInReg(getReturnDestination(), true /* allow_constant_in_reg */);
-        var->bumpUse();
-    }, { var }, ActionType::NORMAL);
+    addAction(
+        [=]() {
+            if (LOG_IC_ASSEMBLY)
+                assembler->comment("commitReturning");
+            var->getInReg(getReturnDestination(), true /* allow_constant_in_reg */);
+            var->bumpUse();
+        },
+        { var }, ActionType::NORMAL);
 
     var->refConsumed();
 
@@ -1746,12 +1761,14 @@ void Rewriter::commitReturningNonPython(RewriterVar* var) {
 
     assert(var->reftype == RefType::UNKNOWN);
 
-    addAction([=]() {
-        if (LOG_IC_ASSEMBLY)
-            assembler->comment("commitReturning");
-        var->getInReg(getReturnDestination(), true /* allow_constant_in_reg */);
-        var->bumpUse();
-    }, { var }, ActionType::NORMAL);
+    addAction(
+        [=]() {
+            if (LOG_IC_ASSEMBLY)
+                assembler->comment("commitReturning");
+            var->getInReg(getReturnDestination(), true /* allow_constant_in_reg */);
+            var->bumpUse();
+        },
+        { var }, ActionType::NORMAL);
 
     commit();
 }

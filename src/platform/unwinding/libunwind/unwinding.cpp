@@ -525,10 +525,6 @@ public:
     }
 };
 
-static FrameInfo* getTopFrameInfo() {
-    return (FrameInfo*)cur_thread_state.frame_info;
-}
-
 llvm::DenseMap<uint64_t /*ip*/, std::vector<Location>> decref_infos;
 void addDecrefInfoEntry(uint64_t ip, std::vector<Location> location) {
     assert(!decref_infos.count(ip) && "why is there already an entry??");
@@ -813,27 +809,6 @@ BoxedCode* getTopPythonFunction() {
     if (!frame_info)
         return NULL;
     return frame_info->code;
-}
-
-BORROWED(Box*) getGlobals() {
-    FrameInfo* frame_info = getTopFrameInfo();
-    if (!frame_info)
-        return NULL;
-    return frame_info->globals;
-}
-
-BORROWED(Box*) getGlobalsDict() {
-    Box* globals = getGlobals();
-    if (globals && PyModule_Check(globals))
-        globals = globals->getAttrWrapper();
-    return globals;
-}
-
-BORROWED(BoxedModule*) getCurrentModule() {
-    BoxedCode* code = getTopPythonFunction();
-    if (!code)
-        return NULL;
-    return code->source->parent_module;
 }
 
 FrameInfo* getPythonFrameInfo(int depth) {
