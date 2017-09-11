@@ -191,8 +191,14 @@ void Assembler::emitByte(uint8_t b) {
 
 void Assembler::emitInt(int64_t n, int bytes) {
     assert(bytes > 0 && bytes <= 8);
-    if (bytes < 8)
-        assert((-1L << (8 * bytes - 1)) <= n && n <= ((1L << (8 * bytes - 1)) - 1));
+
+    // TODO(toshok) this assert doesn't work on OSX:
+    // pyston/src/asm_writing/assembler.cpp:200:38: error: left shift of negative value [-Werror=shift-negative-value]
+    //     assert((-1L << (8 * bytes - 1)) <= n && n <= ((1L << (8 * bytes - 1)) - 1));
+    //                                  ^
+    //
+    // if (bytes < 8)
+    //    assert((-1L << (8 * bytes - 1)) <= n && n <= ((1L << (8 * bytes - 1)) - 1));
 
     for (int i = 0; i < bytes; i++) {
         emitByte(n & 0xff);
@@ -440,7 +446,7 @@ void Assembler::mov_generic(Immediate src, Indirect dest, MovType type) {
     int64_t src_val = src.val;
     assert(fitsInto<int32_t>(src_val));
 
-    assert(type == MovType::Q || type == MovType::L && "we only support this modes for now");
+    assert((type == MovType::Q || type == MovType::L) && "we only support this modes for now");
     int rex = type == MovType::Q ? REX_W : 0;
 
     int dest_idx = dest.base.regnum;
@@ -471,7 +477,7 @@ void Assembler::mov_generic(Immediate src, Indirect dest, MovType type) {
 }
 
 void Assembler::mov_generic(Register src, Indirect dest, MovType type) {
-    assert(type == MovType::Q || type == MovType::L && "we only support this modes for now");
+    assert((type == MovType::Q || type == MovType::L) && "we only support this modes for now");
     int rex = type == MovType::Q ? REX_W : 0;
 
     assert(type != MovType::L && "untested");

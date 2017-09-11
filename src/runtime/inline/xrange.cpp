@@ -236,13 +236,13 @@ Box* xrangeRepr(BoxedXrange* self) {
     Box* repr;
 
     if (self->start == 0 && self->step == 1)
-        repr = PyString_FromFormat("xrange(%ld)", self->stop);
+        repr = PyString_FromFormat("xrange(%lld)", self->stop);
 
     else if (self->step == 1)
-        repr = PyString_FromFormat("xrange(%ld, %ld)", self->start, self->stop);
+        repr = PyString_FromFormat("xrange(%lld, %lld)", self->start, self->stop);
 
     else
-        repr = PyString_FromFormat("xrange(%ld, %ld, %ld)", self->start, self->stop, self->step);
+        repr = PyString_FromFormat("xrange(%lld, %lld, %lld)", self->start, self->stop, self->step);
     return repr;
 }
 

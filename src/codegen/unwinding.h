@@ -19,10 +19,6 @@
 
 #include "codegen/codegen.h"
 
-// Forward-declare libunwind's typedef'd unw_cursor_t:
-struct unw_cursor;
-typedef struct unw_cursor unw_cursor_t;
-
 namespace pyston {
 
 class Box;
@@ -68,11 +64,12 @@ BORROWED(Box*) getGlobalsDict(); // always returns a dict-like object
 CompiledFunction* getCFForAddress(uint64_t addr);
 
 class PythonUnwindSession;
+class UnwindCursor;
 PythonUnwindSession* beginPythonUnwindSession();
 PythonUnwindSession* getActivePythonUnwindSession();
 void endPythonUnwindSession(PythonUnwindSession* unwind_session);
 void* getPythonUnwindSessionExceptionStorage(PythonUnwindSession* unwind_session);
-void unwindingThroughFrame(PythonUnwindSession* unwind_session, unw_cursor_t* cursor);
+void unwindingThroughFrame(PythonUnwindSession* unwind_session, UnwindCursor* cursor);
 
 // TODO move these to exceptions.h
 void logException(ExcInfo* exc_info);

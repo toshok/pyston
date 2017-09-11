@@ -507,7 +507,12 @@ extern "C" BoxedGenerator::BoxedGenerator(BoxedFunctionBase* function, Box* arg1
 
         initial_stack_limit = (void*)(stack_high - INITIAL_STACK_SIZE);
         void* p = mmap(initial_stack_limit, INITIAL_STACK_SIZE, PROT_READ | PROT_WRITE,
-                       MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS | MAP_GROWSDOWN, -1, 0);
+                       MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS
+#if defined(MAP_GROWSDOWN)
+                           | MAP_GROWSDOWN
+#endif
+                       ,
+                       -1, 0);
         ASSERT(p == initial_stack_limit, "%p %s", p, strerror(errno));
 
         // Create an inaccessible redzone so that the generator stack won't grow indefinitely.
@@ -585,7 +590,7 @@ extern "C" int PyGen_NeedsFinalizing(PyGenObject* gen) noexcept {
 
 static void generator_del(PyObject* self) noexcept {
     PyObject* res;
-    PyObject* error_type, *error_value, *error_traceback;
+    PyObject *error_type, *error_value, *error_traceback;
     BoxedGenerator* gen = (BoxedGenerator*)self;
 
     // Pyston change:

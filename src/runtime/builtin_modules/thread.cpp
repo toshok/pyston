@@ -96,7 +96,7 @@ static void* thread_start(STOLEN(Box*) target, STOLEN(Box*) varargs, STOLEN(Box*
 
 // TODO this should take kwargs, which defaults to empty
 Box* startNewThread(Box* target, Box* args, Box* kw) {
-    intptr_t thread_id = start_thread(&thread_start, incref(target), incref(args), xincref(kw));
+    auto thread_id = start_thread(&thread_start, incref(target), incref(args), xincref(kw));
     return boxInt(thread_id);
 }
 
@@ -197,7 +197,7 @@ Box* allocateLock() {
 }
 
 Box* getIdent() {
-    return boxInt(pthread_self());
+    return boxInt(reinterpret_cast<std::uintptr_t>((pthread_self())));
 }
 
 Box* stackSize(Box* arg) {

@@ -54,7 +54,7 @@ extern "C" PyObject** PyList_Items(PyObject* op) noexcept {
 
 extern "C" PyObject* PyList_AsTuple(PyObject* v) noexcept {
     PyObject* w;
-    PyObject** p, **q;
+    PyObject **p, **q;
     Py_ssize_t n;
     if (v == NULL || !PyList_Check(v)) {
         PyErr_BadInternalCall();
@@ -164,7 +164,7 @@ static Py_ssize_t list_length(Box* self) noexcept {
 static PyObject* list_concat(PyListObject* a, PyObject* bb) noexcept {
     Py_ssize_t size;
     Py_ssize_t i;
-    PyObject** src, **dest;
+    PyObject **src, **dest;
     PyListObject* np;
     if (!PyList_Check(bb)) {
         PyErr_Format(PyExc_TypeError, "can only concatenate list (not \"%.200s\") to list", bb->cls->tp_name);
@@ -222,7 +222,7 @@ Box* _listSlice(BoxedList* self, i64 start, i64 stop, i64 step, i64 length) {
 static Box* list_slice(Box* o, Py_ssize_t ilow, Py_ssize_t ihigh) noexcept {
     BoxedList* a = static_cast<BoxedList*>(o);
 
-    PyObject** src, **dest;
+    PyObject **src, **dest;
     Py_ssize_t i, len;
     if (ilow < 0)
         ilow = 0;
@@ -478,8 +478,8 @@ int list_ass_ext_slice(BoxedList* self, PyObject* item, PyObject* value) {
         return 0;
     } else {
         /* assign slice */
-        PyObject* ins, *seq;
-        PyObject** garbage, **seqitems, **selfitems;
+        PyObject *ins, *seq;
+        PyObject **garbage, **seqitems, **selfitems;
         Py_ssize_t cur, i;
 
         /* protect against a[::-1] = a */
@@ -1039,7 +1039,7 @@ static PyObject* list_repeat(PyListObject* a, Py_ssize_t n) noexcept {
     Py_ssize_t i, j;
     Py_ssize_t size;
     PyListObject* np;
-    PyObject** p, **items;
+    PyObject **p, **items;
     PyObject* elem;
     if (n < 0)
         n = 0;
@@ -1097,8 +1097,8 @@ Box* listCount(BoxedList* self, Box* elt) {
 Box* listIndex(BoxedList* self, Box* elt, Box* _start, Box** args) {
     Box* _stop = (BoxedInt*)args[0];
 
-    int64_t start = 0;
-    int64_t stop = self->size;
+    Py_ssize_t start = 0;
+    Py_ssize_t stop = self->size;
 
     if (!_PyEval_SliceIndex(_start, &start))
         throwCAPIException();
@@ -1171,7 +1171,7 @@ Box* listInit(BoxedList* self, Box* container) {
 }
 
 static PyObject* list_richcompare(PyObject* v, PyObject* w, int op) noexcept {
-    PyListObject* vl, *wl;
+    PyListObject *vl, *wl;
     Py_ssize_t i;
 
     if (!PyList_Check(v) || !PyList_Check(w)) {
@@ -1359,10 +1359,13 @@ extern "C" int PyList_SetSlice(PyObject* a, Py_ssize_t ilow, Py_ssize_t ihigh, P
     BoxedList* l = (BoxedList*)a;
     ASSERT(PyList_Check(l), "%s", l->cls->tp_name);
 
+    i64 ilow64 = ilow;
+    i64 ihigh64 = ihigh;
+
     // TODO should just call list_ass_slice
     try {
-        adjustNegativeIndicesOnObject(l, &ilow, &ihigh);
-        listSetitemSliceInt64(l, ilow, ihigh, 1, v);
+        adjustNegativeIndicesOnObject(l, &ilow64, &ihigh64);
+        listSetitemSliceInt64(l, ilow64, ihigh64, 1, v);
         return 0;
     } catch (ExcInfo e) {
         setCAPIException(e);

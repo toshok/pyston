@@ -181,7 +181,11 @@ public:
     void* alloc() {
         if (free_chunks.empty()) {
             int protection = PROT_READ | PROT_WRITE | PROT_EXEC;
-            int flags = MAP_PRIVATE | MAP_ANONYMOUS | MAP_32BIT;
+            int flags = MAP_PRIVATE | MAP_ANONYMOUS
+#if defined(MAP_32BIT)
+                        | MAP_32BIT
+#endif
+                ;
             char* addr = (char*)mmap(NULL, region_size, protection, flags, -1, 0);
             for (int i = 0; i < region_size / chunk_size; ++i) {
                 free_chunks.push_back(&addr[i * chunk_size]);

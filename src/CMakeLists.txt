@@ -2,11 +2,16 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_CXX_FLAGS_DEBUG "-g -DBINARY_SUFFIX= -DBINARY_STRIPPED_SUFFIX=_stripped -DPy_BUILD_CORE -D_PYSTON_API")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fstrict-aliasing -enable-tbaa -DNVALGRIND -DBINARY_SUFFIX=_release -DBINARY_STRIPPED_SUFFIX= -DPy_BUILD_CORE -D_PYSTON_API")
 
+
+
 execute_process(COMMAND git rev-parse HEAD WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} OUTPUT_VARIABLE GITREV OUTPUT_STRIP_TRAILING_WHITESPACE)
 set_source_files_properties(jit.cpp PROPERTIES COMPILE_DEFINITIONS "GITREV=${GITREV}")
 
+include_directories(/usr/local/include)
 include_directories(${CMAKE_BINARY_DIR})
+if(UNWINDER_IMPL STREQUAL "libunwind")
 include_directories(${CMAKE_BINARY_DIR}/build_deps/libunwind/include)
+endif()
 include_directories(${CMAKE_SOURCE_DIR}/build_deps/lz4/lib)
 
 if(ENABLE_GPERFTOOLS)
@@ -63,7 +68,7 @@ add_library(PYSTON_OBJECTS OBJECT ${OPTIONAL_SRCS}
 		codegen/serialize_ast.cpp
 		codegen/stackmaps.cpp
 		codegen/type_recording.cpp
-		codegen/unwinding.cpp
+		codegen/unwinding_stub.cpp
 		core/ast.cpp
 		core/bst.cpp
 		core/cfg.cpp
@@ -106,11 +111,13 @@ add_library(PYSTON_OBJECTS OBJECT ${OPTIONAL_SRCS}
 		runtime/tuple.cpp
 		runtime/types.cpp
 		runtime/util.cpp
+		platform/threading/${THREAD_IMPL}/${THREAD_IMPL}.cpp
+		platform/unwinding/${UNWINDER_IMPL}/${UNWINDER_IMPL}.cpp
 		)
 
 add_dependencies(PYSTON_OBJECTS copy_stdlib libunwind_patched libunwind ${LLVM_LIBS})
 
-add_library(PYSTON_MAIN_OBJECT OBJECT jit.cpp)
+add_library(PYSTON_MAIN_OBJECT OBJECT main.cpp)
 add_dependencies(PYSTON_MAIN_OBJECT copy_stdlib libunwind_patched libunwind liblz4 ${LLVM_LIBS})
 
 # build stdlib

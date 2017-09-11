@@ -39,7 +39,7 @@ std::unique_ptr<StackMap> parseStackMap() {
         return NULL;
 
     if (VERBOSITY() >= 3)
-        printf("Found the stackmaps at stackmap_address 0x%lx\n", stackmap_address);
+        printf("Found the stackmaps at stackmap_address 0x%llx\n", stackmap_address);
 
     std::unique_ptr<StackMap> cur_map = std::unique_ptr<StackMap>(new StackMap());
 
@@ -75,7 +75,7 @@ std::unique_ptr<StackMap> parseStackMap() {
         const StackMap::StackSizeRecord& size_record = *ptr.size_record++;
         cur_map->stack_size_records.push_back(size_record);
         if (VERBOSITY() >= 3)
-            printf("function %d: offset 0x%lx, stack size 0x%lx\n", i, size_record.offset, size_record.stack_size);
+            printf("function %d: offset 0x%llx, stack size 0x%llx\n", i, size_record.offset, size_record.stack_size);
     }
 
     if (VERBOSITY() >= 3)
@@ -85,7 +85,7 @@ std::unique_ptr<StackMap> parseStackMap() {
     for (int i = 0; i < nconstants; i++) {
         uint64_t constant = *ptr.u64++;
         if (VERBOSITY() >= 3)
-            printf("Constant %d: %ld\n", i, constant);
+            printf("Constant %d: %lld\n", i, constant);
         cur_map->constants.push_back(constant);
     }
 
@@ -105,7 +105,7 @@ std::unique_ptr<StackMap> parseStackMap() {
         record->locations.reserve(numlocations);
 
         if (VERBOSITY() >= 3)
-            printf("Stackmap record %ld at 0x%x has %d locations:\n", record->id, record->offset, numlocations);
+            printf("Stackmap record %lld at 0x%x has %d locations:\n", record->id, record->offset, numlocations);
         for (int j = 0; j < numlocations; j++) {
             assert(sizeof(StackMap::Record::Location) == sizeof(*ptr.u64));
             const StackMap::Record::Location& r = *ptr.record_loc++;

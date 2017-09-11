@@ -1121,9 +1121,19 @@ std::pair<AST_Module*, std::unique_ptr<ASTAllocator>> caching_parse_file(const c
     assert(code == 0);
     code = stat(cache_fn.c_str(), &cache_stat);
     std::vector<char> file_data;
-    if (code == 0 && (cache_stat.st_mtime > source_stat.st_mtime
-                      || (cache_stat.st_mtime == source_stat.st_mtime
-                          && cache_stat.st_mtim.tv_nsec > source_stat.st_mtim.tv_nsec))) {
+
+
+#if __APPLE__
+#define NEWER(cache, source)                                                                                           \
+    (cache.st_mtimespec.tv_sec > source.st_mtimespec.tv_sec                                                            \
+     || (cache.st_mtimespec.tv_sec == source.st_mtimespec.tv_sec                                                       \
+         && cache.st_mtimespec.tv_nsec > source.st_mtimespec.tv_nsec))
+#else
+#define NEWER(cache, source)                                                                                           \
+    (cache.st_mtime > source.st_mtime                                                                                  \
+     || (cache.st_mtime == source.st_mtime && cache.st_mtim.tv_nsec > source.st_mtim.tv_nsec))
+#endif
+    if (code == 0 && NEWER(cache_stat, source_stat)) {
         oss << "reading pyc file\n";
         char buf[1024];
 

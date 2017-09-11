@@ -1,4 +1,3 @@
-#if notyet
 /* SSL socket module
 
    SSL support based on patches by Brian E Gallew and Laszlo Kovacs.
@@ -1854,4 +1853,3 @@ init_ssl(void)
         return;
 
 }
-#endif

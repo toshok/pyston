@@ -16,7 +16,9 @@
 #include <dlfcn.h> // dladdr
 #include <stddef.h>
 #include <stdint.h>
+#ifndef __APPLE__
 #include <unwind.h>
+#endif
 
 #include "llvm/Support/LEB128.h" // for {U,S}LEB128 decoding
 
@@ -27,6 +29,8 @@
 #include "core/types.h"        // for ExcInfo
 #include "core/util.h"         // Timer
 #include "runtime/generator.h" // generatorEntry
+
+#ifndef __APPLE__
 
 #define UNW_LOCAL_ONLY
 #include <libunwind.h>
@@ -262,9 +266,9 @@ static void print_lsda(const lsda_info_t* info) {
             int64_t type_filter;
             action_ptr = next_action(action_ptr, &type_filter);
             if (action_ptr)
-                printf("    %ld: filter %ld  next %ld\n", offset, type_filter, action_ptr - info->action_table);
+                printf("    %ld: filter %lld  next %ld\n", offset, type_filter, action_ptr - info->action_table);
             else
-                printf("    %ld: filter %ld  end\n", offset, type_filter);
+                printf("    %ld: filter %lld  end\n", offset, type_filter);
         }
     }
 
@@ -280,9 +284,9 @@ static void print_lsda(const lsda_info_t* info) {
         p += num_bytes;
 
         if (next)
-            printf("  %ld: filter %ld  next %ld\n", offset, type_filter, p - info->action_table);
+            printf("  %ld: filter %lld  next %ld\n", offset, type_filter, p - info->action_table);
         else
-            printf("  %ld: filter %ld  end\n", offset, type_filter);
+            printf("  %ld: filter %lld  end\n", offset, type_filter);
     }
 }
 
@@ -339,23 +343,23 @@ static void print_frame(unw_cursor_t* cursor, const unw_proc_info_t* pip) {
     if (cf) {
         // compiled frame
         frame_type = COMPILED;
-        printf("      ip %12lx  bp %lx    JITTED\n", ip, bp);
+        printf("      ip %12lx  bp %llx    JITTED\n", ip, bp);
         // TODO: get current statement
     } else if ((unw_word_t)interpreter_instr_addr <= ip && ip < interpreter_instr_end) {
         // interpreted frame
         frame_type = INTERPRETED;
-        printf("      ip %12lx  bp %lx    interpreted\n", ip, bp);
+        printf("      ip %12lx  bp %llx    interpreted\n", ip, bp);
         // sometimes this assert()s!
         // cf = getCFForInterpretedFrame((void*)bp);
         // cur_stmt = getCurrentStatementForInterpretedFrame((void*) bp);
     } else if ((unw_word_t)generatorEntry <= ip && ip < generator_entry_end) {
         // generator return frame
         frame_type = GENERATOR;
-        printf("      ip %12lx  bp %lx    generator\n", ip, bp);
+        printf("      ip %12lx  bp %llx    generator\n", ip, bp);
     } else {
         // generic frame, probably C/C++
         frame_type = OTHER;
-        printf("      ip %12lx  bp %lx\n", ip, bp);
+        printf("      ip %12lx  bp %llx\n", ip, bp);
     }
 
     if (frame_type == INTERPRETED && cf && cur_stmt) {
@@ -374,7 +378,7 @@ static inline bool find_call_site_entry(const lsda_info_t* info, const uint8_t* 
         p = parse_call_site_entry(p, info, entry);
 
         if (VERBOSITY("cxx_unwind") >= 5) {
-            printf("    start %p end %p landingpad %p action %lx\n", entry->instrs_start,
+            printf("    start %p end %p landingpad %p action %llx\n", entry->instrs_start,
                    entry->instrs_start + entry->instrs_len_bytes, entry->landing_pad, entry->action_offset_plus_one);
         }
 
@@ -451,9 +455,9 @@ static inline int64_t determine_action(const lsda_info_t* info, const call_site_
         p = next_action(p, &type_filter);
         if (VERBOSITY("cxx_unwind") >= 5) {
             if (p)
-                printf("      %ld: filter %ld  next %ld\n", offset, type_filter, p - info->action_table);
+                printf("      %ld: filter %lld  next %ld\n", offset, type_filter, p - info->action_table);
             else
-                printf("      %ld: filter %ld  end\n", offset, type_filter);
+                printf("      %ld: filter %lld  end\n", offset, type_filter);
         }
 
         if (0 == type_filter) {
@@ -741,3 +745,15 @@ uint64_t getCXXUnwindSymbolAddress(llvm::StringRef sym) {
     return 0;
 }
 }
+#else // __APPLE__
+
+namespace pyston {
+bool isUnwinding() {
+    abort();
+}
+
+uint64_t getCXXUnwindSymbolAddress(llvm::StringRef sym) {
+    abort();
+}
+}
+#endif

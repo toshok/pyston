@@ -35,6 +35,7 @@ sudo yum install git make cmake clang gcc gcc-c++ ccache ninja-build xz-devel au
 **OSX 10.12**
 ```
 XXX(toshok) lots of stuff here
+brew install gmp
 ```
 
 ### Additional prerequisites for running the integration tests

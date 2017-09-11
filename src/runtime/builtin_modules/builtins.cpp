@@ -431,7 +431,7 @@ Box* range(Box* start, Box* stop, Box* step) {
     }
 
     BoxedList* rtn = new BoxedList();
-    rtn->ensure(std::max(0l, 1 + (istop - istart) / istep));
+    rtn->ensure(std::max(0ll, 1 + (istop - istart) / istep));
     if (istep > 0) {
         for (i64 i = istart; i < istop; i += istep) {
             Box* bi = boxInt(i);

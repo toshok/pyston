@@ -19,10 +19,12 @@
 
 // Box* executeInnerAndSetupFrame(ASTInterpreter& interpreter, CFGBlock* start_block, AST_stmt* start_at)
 .text
-.globl executeInnerAndSetupFrame
-.type executeInnerAndSetupFrame,@function
+.globl _executeInnerAndSetupFrame
+#ifndef __APPLE__
+.type _executeInnerAndSetupFrame,@function
+#endif
 .align 16
-executeInnerAndSetupFrame:
+_executeInnerAndSetupFrame:
     .cfi_startproc
     push %rbp
     .cfi_def_cfa_offset     16
@@ -31,13 +33,15 @@ executeInnerAndSetupFrame:
     .cfi_def_cfa_register   rbp
     sub $16, %rsp
     mov %rdi, -8(%rbp)
-    call executeInnerFromASM
+    call _executeInnerFromASM
     add $16, %rsp
     pop %rbp
     .cfi_def_cfa            rsp,8
     ret
     .cfi_endproc
+#ifndef __APPLE__
 .size executeInnerAndSetupFrame,.-executeInnerAndSetupFrame
+#endif
 
 // This function is just a small wrapper around astInterpretDeoptFromASM.
 // Our unwinder must be able to detect deopt frames and by writing this wrapper in assembler we can be sure to correctly
@@ -46,22 +50,25 @@ executeInnerAndSetupFrame:
 // Box* astInterpretDeopt(FunctionMetadata* cf, AST_stmt* enclosing_stmt, Box* expr_val,
 //                        FrameStackState frame_state);
 .text
-.globl astInterpretDeopt
-.type astInterpretDeopt,@function
+.globl _astInterpretDeopt
+#ifndef __APPLE__
+.type _astInterpretDeopt,@function
+#endif
 .align 16
-astInterpretDeopt:
+_astInterpretDeopt:
     .cfi_startproc
     push %rbp
     .cfi_def_cfa_offset     16
     .cfi_offset             rbp,-16
     mov %rsp, %rbp
     .cfi_def_cfa_register   rbp
-    call astInterpretDeoptFromASM
+    call _astInterpretDeoptFromASM
     pop %rbp
     .cfi_def_cfa            rsp,8
     ret
     .cfi_endproc
+#ifndef __APPLE__
 .size astInterpretDeopt,.-astInterpretDeopt
-
 .section .note.GNU-stack,"",%progbits // we don't need executable stack
+#endif
 

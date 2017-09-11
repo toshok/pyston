@@ -16,21 +16,27 @@
 
 // Context* makeContext(void* stack_top, void (*start_func)(intptr_t))
 .text
-.globl makeContext
-.type makeContext,@function
+.globl _makeContext
+#ifndef __APPLE__
+.type _makeContext,@function
+#endif
 .align 16
-makeContext:
+_makeContext:
     leaq  -64(%rdi), %rax   // make space for the init Context (56bytes + 8byte alignment)
     movq  %rsi, 48(%rax)    // set context->ip to the start_func param
     ret                     // return new adjusted top of stack
+#ifndef __APPLE__
 .size makeContext,.-makeContext
+#endif
 
 
 // void swapContext(Context** old_context, Context* new_context, intptr_t arg)
-.globl swapContext
-.type swapContext,@function
+.globl _swapContext
+#ifndef __APPLE__
+.type _swapContext,@function
+#endif
 .align 16
-swapContext:
+_swapContext:
     pushq  %rbp             // save regs
     pushq  %rbx
     pushq  %r15
@@ -52,6 +58,8 @@ swapContext:
 
     popq  %r8               // load new_context->ip into r8
     jmp  *%r8               // jump to context->ip
+#ifndef __APPLE__
 .size swapContext,.-swapContext
 
 .section .note.GNU-stack,"",%progbits // we don't need executable stack
+#endif

@@ -51,7 +51,8 @@
 
 
 #ifndef GITREV
-#error
+#define GITREV "FIXME(toshok)"
+//#error
 #endif
 
 namespace pyston {
@@ -101,7 +102,7 @@ static void propagate_sig(int signum) {
 }
 
 static void enableGdbSegfaultWatcher() {
-    int r = pipe2(pipefds, 0);
+    int r = pipe(pipefds);
     RELEASE_ASSERT(r == 0, "");
 
     gdb_child_pid = fork();
@@ -110,7 +111,12 @@ static void enableGdbSegfaultWatcher() {
 
         close(pipefds[1]);
 
-        for (int i = 0; i < _NSIG; i++) {
+#if defined(__APPLE__)
+#define NUM_SIGNALS NSIG
+#else
+#define NUM_SIGNALS _NSIG
+#endif
+        for (int i = 0; i < NUM_SIGNALS; i++) {
             if (i == SIGCHLD)
                 continue;
             signal(i, &propagate_sig);
@@ -239,7 +245,7 @@ int handleArg(char code) {
 }
 
 static int RunModule(const char* module, int set_argv0) {
-    PyObject* runpy, *runmodule, *runargs, *result;
+    PyObject *runpy, *runmodule, *runargs, *result;
     runpy = PyImport_ImportModule("runpy");
     if (runpy == NULL) {
         fprintf(stderr, "Could not import runpy module\n");
@@ -273,7 +279,7 @@ static int RunModule(const char* module, int set_argv0) {
 }
 
 static int RunMainFromImporter(const char* filename) {
-    PyObject* argv0 = NULL, * importer = NULL;
+    PyObject *argv0 = NULL, *importer = NULL;
 
     if ((argv0 = PyString_FromString(filename)) && (importer = PyImport_GetImporter(argv0))
         && (importer->cls != &PyNullImporter_Type)) {

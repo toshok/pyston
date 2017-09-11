@@ -25,9 +25,17 @@
 namespace pyston {
 
 void parseSlice(BoxedSlice* slice, int size, i64* out_start, i64* out_stop, i64* out_step, i64* out_length) {
-    int ret = PySlice_GetIndicesEx((PySliceObject*)slice, size, out_start, out_stop, out_step, out_length);
+    Py_ssize_t _out_start, _out_stop, _out_step, _out_length;
+
+    int ret = PySlice_GetIndicesEx(reinterpret_cast<PySliceObject*>(slice), size, &_out_start, &_out_stop, &_out_step,
+                                   &_out_length);
     if (ret == -1)
         throwCAPIException();
+
+    *out_start = _out_start;
+    *out_stop = _out_stop;
+    *out_step = _out_step;
+    *out_length = _out_length;
 }
 
 bool isSliceIndex(Box* b) noexcept {
@@ -223,7 +231,7 @@ extern "C" void dumpEx(void* p, int levels) {
         }
 
         if (PyInt_Check(b)) {
-            printf("Int value: %ld\n", static_cast<BoxedInt*>(b)->n);
+            printf("Int value: %lld\n", static_cast<BoxedInt*>(b)->n);
         }
 
         if (PyLong_Check(b)) {

@@ -90,7 +90,7 @@ public:
         : pthread_id(pthread_id), public_thread_state(tstate) {
         HEAD_LOCK();
 
-        tstate->thread_id = pthread_id;
+        tstate->thread_id = reinterpret_cast<uintptr_t>(pthread_id);
 
         tstate->next = interpreter_state.tstate_head;
         interpreter_state.tstate_head = tstate;
@@ -146,7 +146,7 @@ static void registerThread(bool is_starting_thread) {
         num_starting_threads--;
 
     if (VERBOSITY() >= 2)
-        printf("child initialized; tid=%ld\n", current_thread);
+        printf("child initialized; tid=" PTHREAD_T_FMT "\n", current_thread);
 }
 
 /* Common code for PyThreadState_Delete() and PyThreadState_DeleteCurrent() */
@@ -194,7 +194,7 @@ static void unregisterThread() {
 
         current_threads.erase(current_thread);
         if (VERBOSITY() >= 2)
-            printf("thread tid=%ld exited\n", current_thread);
+            printf("thread tid=" PTHREAD_T_FMT "exited\n", current_thread);
     }
 
     current_internal_thread_state->gilReleased();
@@ -250,7 +250,7 @@ extern "C" PyThreadState* PyGILState_GetThisThreadState(void) noexcept {
 
 struct ThreadStartArgs {
     void* (*start_func)(Box*, Box*, Box*);
-    Box* arg1, *arg2, *arg3;
+    Box *arg1, *arg2, *arg3;
 };
 
 static void* _thread_start(void* _arg) {
@@ -277,7 +277,7 @@ bool threadWasStarted() {
     return thread_was_started;
 }
 
-intptr_t start_thread(void* (*start_func)(Box*, Box*, Box*), Box* arg1, Box* arg2, Box* arg3) {
+uintptr_t start_thread(void* (*start_func)(Box*, Box*, Box*), Box* arg1, Box* arg2, Box* arg3) {
     thread_was_started = true;
 
     {
@@ -291,14 +291,14 @@ intptr_t start_thread(void* (*start_func)(Box*, Box*, Box*), Box* arg1, Box* arg
     int code = pthread_create(&thread_id, NULL, &_thread_start, args);
     RELEASE_ASSERT(code == 0, "");
     if (VERBOSITY() >= 2)
-        printf("pthread thread_id: 0x%lx\n", thread_id);
+        printf("pthread thread_id: " PTHREAD_T_FMT "\n", thread_id);
     pthread_detach(thread_id);
 
-    static_assert(sizeof(pthread_t) <= sizeof(intptr_t), "");
-    return thread_id;
+    static_assert(sizeof(pthread_t) <= sizeof(uintptr_t), "");
+    return reinterpret_cast<uintptr_t>(thread_id);
 }
 
-static long main_thread_id;
+static pthread_t main_thread_id;
 
 void registerMainThread() {
     LOCK_REGION(&threading_lock);
@@ -673,7 +673,7 @@ extern "C" PyObject* _PyThread_CurrentFrames(void) noexcept {
             FrameInfo* frame_info = (FrameInfo*)pair.second->public_thread_state->frame_info;
             Box* frame = getFrame(frame_info);
             assert(frame);
-            PyDict_SetItem(result, autoDecref(boxInt(pair.first)), frame);
+            PyDict_SetItem(result, autoDecref(boxInt(reinterpret_cast<uintptr_t>(pair.first))), frame);
         }
         return result;
     } catch (ExcInfo) {

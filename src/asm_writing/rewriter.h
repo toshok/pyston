@@ -324,12 +324,7 @@ private:
 
 public:
     template <typename Functor> SmallFunction(Functor&& f) noexcept {
-// workaround missing "is_trivially_copy_constructible" in g++ < 5.0
-#if __GNUG__ && __GNUC__ < 5
-#define IS_TRIVIALLY_COPY_CONSTRUCTIBLE(T) std::has_trivial_copy_constructor<T>::value
-#else
 #define IS_TRIVIALLY_COPY_CONSTRUCTIBLE(T) std::is_trivially_copy_constructible<T>::value
-#endif
         static_assert(IS_TRIVIALLY_COPY_CONSTRUCTIBLE(typename std::remove_reference<Functor>::type),
                       "SmallFunction currently only works with simple types");
         static_assert(std::is_trivially_destructible<typename std::remove_reference<Functor>::type>::value,
@@ -774,11 +769,20 @@ template <> inline RewriterVar* RewriterVar::getAttrCast<uint32_t, uint64_t>(int
 template <> inline RewriterVar* RewriterVar::getAttrCast<uint64_t, uint64_t>(int offset, Location loc) {
     return getAttr(offset, loc, assembler::MovType::Q);
 }
-template <> inline RewriterVar* RewriterVar::getAttrCast<long long, long long>(int offset, Location loc) {
+// TODO(toshok) 32/64 bit problems below
+template <> inline RewriterVar* RewriterVar::getAttrCast<unsigned char, unsigned long>(int offset, Location loc) {
+    return getAttr(offset, loc, assembler::MovType::ZBQ);
+}
+template <> inline RewriterVar* RewriterVar::getAttrCast<unsigned short, unsigned long>(int offset, Location loc) {
+    return getAttr(offset, loc, assembler::MovType::ZWQ);
+}
+template <> inline RewriterVar* RewriterVar::getAttrCast<unsigned int, unsigned long>(int offset, Location loc) {
+    return getAttr(offset, loc, assembler::MovType::ZLQ);
+}
+template <> inline RewriterVar* RewriterVar::getAttrCast<unsigned long, unsigned long>(int offset, Location loc) {
     return getAttr(offset, loc, assembler::MovType::Q);
 }
-template <>
-inline RewriterVar* RewriterVar::getAttrCast<unsigned long long, unsigned long long>(int offset, Location loc) {
+template <> inline RewriterVar* RewriterVar::getAttrCast<long, long long>(int offset, Location loc) {
     return getAttr(offset, loc, assembler::MovType::Q);
 }
 }

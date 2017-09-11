@@ -52,8 +52,8 @@ if(CCACHE)
   #set(BC_CXX ${CCACHE} ${LLVM_TOOLS_BINARY_DIR}/clang++)
   set(BC_CXX ${CCACHE} clang++)
 else()
-  #set(BC_CXX ${LLVM_TOOLS_BINARY_DIR}/clang++)
-  set(BC_CXX clang++)
+  set(BC_CXX ${LLVM_TOOLS_BINARY_DIR}/clang++)
+  #set(BC_CXX clang++)
 endif()
 
 # set CXX flags
@@ -74,7 +74,7 @@ foreach(DEFINITION ${COMPILE_DEFINITIONS})
 endforeach(DEFINITION)
 
 # set includes
-set(BC_INCLUDES "-I/usr/include/c++/4.2.1 -I/usr/include/c++/4.2.1/tr1")
+separate_arguments(BC_INCLUDES UNIX_COMMAND "${SYSTEM_CPLUSPLUS_INCLUDES}")
 get_directory_property(INCLUDE_DIRECTORIES INCLUDE_DIRECTORIES)
 foreach(DIRECTORY ${INCLUDE_DIRECTORIES})
   list(APPEND BC_INCLUDES -I${DIRECTORY})
@@ -114,8 +114,10 @@ foreach(BC_SRC ${BC_INLINE_SRCS})
 
   # keep track of every bitcode and object file we created
   list(APPEND BC_FILES ${BC_SRC_BASENAME}.pub.bc)
-  list(APPEND BC_OBJS ${BC_SRC_BASENAME}.o)
+  #list(APPEND BC_OBJS ${BC_SRC_BASENAME}.o)
 endforeach(BC_SRC)
+
+#set(LD_BINARY_FLAG "-b binary")
 
 # link all the bitcode files together
 add_custom_command(OUTPUT stdlib.unopt.bc
@@ -130,7 +132,7 @@ add_custom_command(OUTPUT stdlib${STDLIB_SUFFIX}.bc
                    COMMENT "Optimizing stdlib.unopt.bc -> stdlib.bc")
 
 add_custom_command(OUTPUT stdlib.bc.o
-                   COMMAND ${CMAKE_LINKER} -r -b binary stdlib${STDLIB_SUFFIX}.bc -o ${CMAKE_CURRENT_BINARY_DIR}/stdlib.bc.o
+                   COMMAND ${CMAKE_LINKER} -r ${LD_ARCH_FLAG} ${LD_BINARY_FLAG} stdlib${STDLIB_SUFFIX}.bc -o ${CMAKE_CURRENT_BINARY_DIR}/stdlib.bc.o
                    DEPENDS stdlib${STDLIB_SUFFIX}.bc
                    COMMENT "Embedding stdlib${STDLIB_SUFFIX}.bc -> stdlib.bc.o")
 
@@ -141,11 +143,12 @@ if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
                      COMMENT "Stripping stdlib.bc -> stdlib.stripped.bc")
 
   add_custom_command(OUTPUT stdlib.stripped.bc.o
-                     COMMAND ${CMAKE_LINKER} -r -b binary stdlib.stripped.bc -o ${CMAKE_CURRENT_BINARY_DIR}/stdlib.stripped.bc.o
+                     COMMAND ${CMAKE_LINKER} -r ${LD_ARCH_FLAG} ${LD_BINARY_FLAG} stdlib.stripped.bc -o ${CMAKE_CURRENT_BINARY_DIR}/stdlib.stripped.bc.o
                      DEPENDS stdlib.stripped.bc
                      COMMENT "Embedding stdlib.stripped.bc -> stdlib.stripped.bc.o")
-  add_library(stdlib stdlib.stripped.bc.o stdlib.bc.o ${BC_OBJS})
-else()
+  #add_library(stdlib stdlib.stripped.bc.o stdlib.bc.o ${BC_OBJS})
+  add_library(stdlib stdlib.bc.o ${BC_OBJS})
+  else()
   add_library(stdlib stdlib.bc.o ${BC_OBJS})
 endif()
 set_property(TARGET stdlib PROPERTY LINKER_LANGUAGE C)

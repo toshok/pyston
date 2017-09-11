@@ -17,7 +17,6 @@
 
 #include <llvm/ADT/StringMap.h>
 #include <llvm/ADT/Twine.h>
-#include <ucontext.h>
 
 #include "Python.h"
 #include "structmember.h"
@@ -76,7 +75,7 @@ extern "C" BoxedTuple* EmptyTuple;
 extern "C" BoxedString* EmptyString;
 
 extern "C" {
-extern BoxedClass* object_cls, *type_cls, *bool_cls, *int_cls, *long_cls, *float_cls, *str_cls, *function_cls,
+extern BoxedClass *object_cls, *type_cls, *bool_cls, *int_cls, *long_cls, *float_cls, *str_cls, *function_cls,
     *none_cls, *instancemethod_cls, *list_cls, *slice_cls, *module_cls, *dict_cls, *tuple_cls, *enumerate_cls,
     *xrange_cls, *closure_cls, *generator_cls, *complex_cls, *basestring_cls, *property_cls, *staticmethod_cls,
     *classmethod_cls, *attrwrapper_cls, *builtin_function_or_method_cls, *set_cls, *frozenset_cls, *code_cls,
@@ -115,14 +114,14 @@ extern BoxedClass* object_cls, *type_cls, *bool_cls, *int_cls, *long_cls, *float
 extern std::vector<BoxedClass*> exception_types;
 
 extern "C" {
-extern Box* pyston_None, *NotImplemented, *pyston_True, *pyston_False, *Ellipsis;
+extern Box *pyston_None, *NotImplemented, *pyston_True, *pyston_False, *Ellipsis;
 }
 extern "C" {
-extern Box* repr_obj, *len_obj, *hash_obj, *range_obj, *abs_obj, *min_obj, *max_obj, *open_obj, *id_obj, *chr_obj,
+extern Box *repr_obj, *len_obj, *hash_obj, *range_obj, *abs_obj, *min_obj, *max_obj, *open_obj, *id_obj, *chr_obj,
     *ord_obj, *trap_obj;
 } // these are only needed for functionRepr, which is hacky
 extern "C" {
-extern BoxedModule* sys_module, *builtins_module, *math_module, *time_module, *thread_module;
+extern BoxedModule *sys_module, *builtins_module, *math_module, *time_module, *thread_module;
 }
 
 extern "C" inline Box* boxBool(bool b) __attribute__((visibility("default")));
@@ -239,7 +238,8 @@ public:
     pyston_inquiry tpp_hasnext;
 
     ExceptionSwitchableFunction<Box*, Box*, CallRewriteArgs*, ArgPassSpec, Box*, Box*, Box*, Box**,
-                                const std::vector<BoxedString*>*> tpp_call;
+                                const std::vector<BoxedString*>*>
+        tpp_call;
 
     bool hasGenericGetattr() {
         if (tp_getattr || tp_getattro != object_cls->tp_getattro)
@@ -681,7 +681,7 @@ public:
     Box** im_weakreflist;
 
     // obj is NULL for unbound instancemethod
-    Box* obj, *func, *im_class;
+    Box *obj, *func, *im_class;
 
     BoxedInstanceMethod(Box* obj, Box* func, Box* im_class) __attribute__((visibility("default")))
     : im_weakreflist(NULL), obj(obj), func(func), im_class(im_class) {
@@ -1050,7 +1050,8 @@ inline BoxAndHash& incref(BoxAndHash& b) {
 class BoxedDict : public Box {
 public:
     typedef pyston::DenseMap<BoxAndHash, Box*, BoxAndHash::Comparisons, detail::DenseMapPair<BoxAndHash, Box*>,
-                             /* MinSize= */ 8> DictMap;
+                             /* MinSize= */ 8>
+        DictMap;
 
     DictMap d;
 
@@ -1184,7 +1185,8 @@ public:
     // This can be used to implement functions which know how to rewrite themselves,
     // such as typeCall.
     typedef ExceptionSwitchableFunction<Box*, BoxedFunctionBase*, CallRewriteArgs*, ArgPassSpec, Box*, Box*, Box*,
-                                        Box**, const std::vector<BoxedString*>*> InternalCallable;
+                                        Box**, const std::vector<BoxedString*>*>
+        InternalCallable;
     InternalCallable internal_callable;
 
     // Constructor for Python code objects:
@@ -1350,7 +1352,7 @@ public:
 
 class BoxedSlice : public Box {
 public:
-    Box* start, *stop, *step;
+    Box *start, *stop, *step;
     BoxedSlice(Box* lower, Box* upper, Box* step) : start(lower), stop(upper), step(step) {
         Py_INCREF(lower);
         Py_INCREF(upper);
@@ -1443,7 +1445,7 @@ public:
     Box** weakreflist;
 
     BoxedFunctionBase* function;
-    Box* arg1, *arg2, *arg3;
+    Box *arg1, *arg2, *arg3;
     GCdArray* args;
 
     bool entryExited;
@@ -1452,7 +1454,7 @@ public:
     bool iterated_from__hasnext__;
     ExcInfo exception;
 
-    struct Context* context, *returnContext;
+    struct Context *context, *returnContext;
     void* stack_begin;
     FrameInfo* top_caller_frame_info; // The FrameInfo that called into this generator.
 

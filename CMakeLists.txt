@@ -135,6 +135,38 @@ if(${CMAKE_BUILD_TYPE} STREQUAL "Debug" AND NOT ENABLE_LLVM_DEBUG)
   set(CMAKE_CXX_FLAGS_DEBUG "-O3" CACHE STRING "" FORCE)
 endif()
 
+STRING(TOLOWER "${CMAKE_SYSTEM_NAME}" CMAKE_SYSTEM_NAME_LOWER)
+
+if(CMAKE_SYSTEM_NAME_LOWER STREQUAL "linux")
+  set(UNWINDER_IMPL "libunwind" CACHE STRING "" FORCE)
+  set(THREAD_IMPL "pthread" CACHE STRING "" FORCE)
+  set(USE_JEMALLOC true CACHE BOOLEAN "" FORCE)
+  set(SYSTEM_CPLUSPLUS_INCLUDES "-I/usr/include/c++/4.2.1 -I/usr/include/c++/4.2.1/tr1" CACHE BOOLEAN "" FORCE)
+  set(LD_BINARY_FLAG "-b binary")
+  set(LD_ARCH_FLAG "")
+  set(WHOLE_ARCHIVE_FLAG "-Wl,--whole-archive")
+  set(NO_WHOLE_ARCHIVE_FLAG "-Wl,--no-whole-archive")
+elseif(CMAKE_SYSTEM_NAME_LOWER STREQUAL "darwin")
+  set(UNWINDER_IMPL "darwin" CACHE STRING "" FORCE)
+  set(THREAD_IMPL "darwin" CACHE STRING "" FORCE)
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -I/usr/local/opt/openssl/include")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I/usr/local/opt/openssl/include")
+
+  execute_process(
+    COMMAND xcode-select -p
+    OUTPUT_VARIABLE XCODE_DEV_DIR
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+  set(PLATFORM_CPLUSPLUS_DIR "${XCODE_DEV_DIR}/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include")
+  set(SYSTEM_CPLUSPLUS_INCLUDES "-I${XCODE_DEV_DIR}/Toolchains/XcodeDefault.xctoolchain/usr/include/c++/v1 -I${XCODE_DEV_DIR}/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/8.1.0/include -I${PLATFORM_CPLUSPLUS_DIR} -I${PLATFORM_CPLUSPLUS_DIR}/c++/4.2.1 -I${PLATFORM_CPLUSPLUS_DIR}/c++/4.2.1/tr1" CACHE BOOLEAN "" FORCE)
+  set(LD_BINARY_FLAG "")
+  set(LD_ARCH_FLAG -arch x86_64)
+  set(WHOLE_ARCHIVE_FLAG "-Wl,-force_load")
+  set(EXTRA_LD_DIR_FLAGS -L/usr/local/lib -L/usr/local/opt/openssl/lib -L/usr/local/opt/sqlite3/lib)
+else()
+  message(FATAL_ERROR "unsupported system: ${CMAKE_SYSTEM_NAME_LOWER}")
+endif()
+
 add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/gitmodules
                    COMMAND git submodule update --init build_deps
                    COMMAND cmake -E touch ${CMAKE_BINARY_DIR}/gitmodules
@@ -142,39 +174,40 @@ add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/gitmodules
                    DEPENDS ${CMAKE_SOURCE_DIR}/.gitmodules)
 add_custom_target(gitsubmodules DEPENDS ${CMAKE_BINARY_DIR}/gitmodules)
 
-# jemalloc
-#ExternalProject_Add(libjemalloc
-#                    BUILD_BYPRODUCTS ${CMAKE_BINARY_DIR}/jemalloc/lib/libjemalloc.a
-#                    PREFIX jemalloc-build
-#                    SOURCE_DIR ${CMAKE_SOURCE_DIR}/build_deps/jemalloc
-#                    DEPENDS gitsubmodules
-#                    UPDATE_COMMAND autoconf
-#                    CONFIGURE_COMMAND ${CMAKE_SOURCE_DIR}/build_deps/jemalloc/configure --prefix=${CMAKE_BINARY_DIR}/jemalloc --enable-autogen --enable-prof --enable-prof-libunwind
-#                    BUILD_COMMAND ${MAKE_PRG}
-#                    INSTALL_COMMAND ${MAKE_PRG} install_bin install_lib
-#                    LOG_UPDATE ON
-#                    LOG_CONFIGURE ON
-#                    LOG_BUILD ON
-#                    LOG_INSTALL ON)
+if(USE_JEMALLOC)
+  ExternalProject_Add(libjemalloc
+                      BUILD_BYPRODUCTS ${CMAKE_BINARY_DIR}/jemalloc/lib/libjemalloc.a
+                      PREFIX jemalloc-build
+                      SOURCE_DIR ${CMAKE_SOURCE_DIR}/build_deps/jemalloc
+                      DEPENDS gitsubmodules
+                      UPDATE_COMMAND autoconf
+                      CONFIGURE_COMMAND ${CMAKE_SOURCE_DIR}/build_deps/jemalloc/configure --prefix=${CMAKE_BINARY_DIR}/jemalloc --enable-autogen --enable-prof --enable-prof-libunwind
+                      BUILD_COMMAND ${MAKE_PRG}
+                      INSTALL_COMMAND ${MAKE_PRG} install_bin install_lib
+                      LOG_UPDATE ON
+                      LOG_CONFIGURE ON
+                      LOG_BUILD ON
+                      LOG_INSTALL ON)
 
-#
-# CMake (<3.3) does not support BUILD_BYPRODUCTS.
-# This is a problem for ninja, which will not know how to build the generated file.
-# Here are a couple hacks to get around it:
-#
-# Add a copy step.  This just hides the dependency but it seems to work.
-# add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/jemalloc/lib/libjemalloc_copied.a DEPENDS libjemalloc COMMAND cp "${CMAKE_BINARY_DIR}/jemalloc/lib/libjemalloc.a" ${CMAKE_BINARY_DIR}/jemalloc/lib/libjemalloc_copied.a)
-# add_custom_target(libjemalloc_copied DEPENDS ${CMAKE_BINARY_DIR}/jemalloc/lib/libjemalloc_copied.a)
-#
-# Hack option #2: the existence of the custom target tells ninja that libjemalloc.a will get built somehow.
-# The name of the target doesn't matter.
-# add_custom_target(libjemalloc_byproducts DEPENDS ${CMAKE_BINARY_DIR}/jemalloc/lib/libjemalloc.a)
-#
-# Hack option #3: delete the .so's and use `-ljemalloc` on the link line so that ninja doesn't know about the dependency.
-# ExternalProject_Add_Step(libjemalloc disable_shared
-# DEPENDEES install
-# COMMAND sh -c "rm -v ${CMAKE_BINARY_DIR}/jemalloc/lib/*.so*"
-# )
+  #
+  # CMake (<3.3) does not support BUILD_BYPRODUCTS.
+  # This is a problem for ninja, which will not know how to build the generated file.
+  # Here are a couple hacks to get around it:
+  #
+  # Add a copy step.  This just hides the dependency but it seems to work.
+  # add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/jemalloc/lib/libjemalloc_copied.a DEPENDS libjemalloc COMMAND cp "${CMAKE_BINARY_DIR}/jemalloc/lib/libjemalloc.a" ${CMAKE_BINARY_DIR}/jemalloc/lib/libjemalloc_copied.a)
+  # add_custom_target(libjemalloc_copied DEPENDS ${CMAKE_BINARY_DIR}/jemalloc/lib/libjemalloc_copied.a)
+  #
+  # Hack option #2: the existence of the custom target tells ninja that libjemalloc.a will get built somehow.
+  # The name of the target doesn't matter.
+  add_custom_target(libjemalloc_byproducts DEPENDS ${CMAKE_BINARY_DIR}/jemalloc/lib/libjemalloc.a)
+  #
+  # Hack option #3: delete the .so's and use `-ljemalloc` on the link line so that ninja doesn't know about the dependency.
+  # ExternalProject_Add_Step(libjemalloc disable_shared
+  # DEPENDEES install
+  # COMMAND sh -c "rm -v ${CMAKE_BINARY_DIR}/jemalloc/lib/*.so*"
+  # )
+endif()
 
 execute_process(COMMAND cat llvm_revision.txt WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} OUTPUT_VARIABLE LLVMREV OUTPUT_STRIP_TRAILING_WHITESPACE)
 
@@ -182,22 +215,6 @@ execute_process(COMMAND cat llvm_revision.txt WORKING_DIRECTORY ${CMAKE_SOURCE_D
 add_custom_target(llvm_gotorev python ${CMAKE_SOURCE_DIR}/tools/git_svn_gotorev.py ${DEPS_DIR}/llvm-trunk ${LLVMREV} llvm_patches WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 add_custom_target(clang_gotorev python ${CMAKE_SOURCE_DIR}/tools/git_svn_gotorev.py ${DEPS_DIR}/llvm-trunk/tools/clang ${LLVMREV} clang_patches WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 add_custom_target(llvm_up DEPENDS llvm_gotorev clang_gotorev)
-
-set(LIBUNWIND_PATCHES
-  ${CMAKE_SOURCE_DIR}/libunwind_patches/0001-pyston-add-lots-of-comments.patch
-  ${CMAKE_SOURCE_DIR}/libunwind_patches/0002-pyston-stop-x86_64-setcontext-restoring-uninitialize.patch
-  ${CMAKE_SOURCE_DIR}/libunwind_patches/0003-use-a-sorted-array-for-registered-objects-and-do-a-b.patch
-  ${CMAKE_SOURCE_DIR}/libunwind_patches/0004-disable-libunwind-doc-generation.patch
-  ${CMAKE_SOURCE_DIR}/libunwind_patches/9999-is-patched-marker.patch
-)
-
-add_custom_command(OUTPUT ${CMAKE_SOURCE_DIR}/build_deps/libunwind/pyston_patched
-                   COMMAND git submodule update build_deps/libunwind
-                   COMMAND python ${CMAKE_SOURCE_DIR}/tools/git_am_automated.py build_deps/libunwind ${LIBUNWIND_PATCHES}
-                   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-                   DEPENDS ${LIBUNWIND_PATCHES}
-                   DEPENDS gitsubmodules)
-add_custom_target(libunwind_patched DEPENDS ${CMAKE_SOURCE_DIR}/build_deps/libunwind/pyston_patched)
 
 # llvm
 set(LLVM_TARGETS_TO_BUILD "host" CACHE STRING "LLVM targets")
@@ -212,31 +229,51 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_BINARY_DIR}/llvm/share/llvm/cmake/")
 include(LLVMConfig)
 llvm_map_components_to_libnames(LLVM_LIBS core mcjit native bitreader bitwriter ipo irreader debuginfodwarf instrumentation ${INTEL_JIT_EVENTS_LIB})
 
-# libunwind
-if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
-  set(LIBUNWIND_DEBUG_CFLAGS "CFLAGS=-O0 -g")
-  set(LIBUNWIND_DEBUG "--enable-debug")
-  set(LIBUNWIND_DEBUG_FRAME "--enable-debug-frame")
-  set(LIBUNWIND_CONSERVATIVE_CHECKS "--enable-conservative-checks")
-else()
-  set(LIBUNWIND_CONSERVATIVE_CHECKS "--disable-conservative-checks")
+if(UNWINDER_IMPL STREQUAL "libunwind")
+  set(LIBUNWIND_PATCHES
+    ${CMAKE_SOURCE_DIR}/libunwind_patches/0001-pyston-add-lots-of-comments.patch
+    ${CMAKE_SOURCE_DIR}/libunwind_patches/0002-pyston-stop-x86_64-setcontext-restoring-uninitialize.patch
+    ${CMAKE_SOURCE_DIR}/libunwind_patches/0003-use-a-sorted-array-for-registered-objects-and-do-a-b.patch
+    ${CMAKE_SOURCE_DIR}/libunwind_patches/0004-disable-libunwind-doc-generation.patch
+    ${CMAKE_SOURCE_DIR}/libunwind_patches/9999-is-patched-marker.patch
+  )
+
+  add_custom_command(OUTPUT ${CMAKE_SOURCE_DIR}/build_deps/libunwind/pyston_patched
+                    COMMAND git submodule update build_deps/libunwind
+                    COMMAND python ${CMAKE_SOURCE_DIR}/tools/git_am_automated.py build_deps/libunwind ${LIBUNWIND_PATCHES}
+                    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+                    DEPENDS ${LIBUNWIND_PATCHES}
+                    DEPENDS gitsubmodules)
+  add_custom_target(libunwind_patched DEPENDS ${CMAKE_SOURCE_DIR}/build_deps/libunwind/pyston_patched)
+
+  if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+    set(LIBUNWIND_DEBUG_CFLAGS "CFLAGS=-O0 -g")
+    set(LIBUNWIND_DEBUG "--enable-debug")
+    set(LIBUNWIND_DEBUG_FRAME "--enable-debug-frame")
+    set(LIBUNWIND_CONSERVATIVE_CHECKS "--enable-conservative-checks")
+  else()
+    set(LIBUNWIND_CONSERVATIVE_CHECKS "--disable-conservative-checks")
+  endif()
+  ExternalProject_Add(libunwind
+                      PREFIX build_deps/libunwind
+                      SOURCE_DIR ${CMAKE_SOURCE_DIR}/build_deps/libunwind
+                      DEPENDS libunwind_patched
+                      UPDATE_COMMAND autoreconf -i
+                      CONFIGURE_COMMAND ${CMAKE_SOURCE_DIR}/build_deps/libunwind/configure ${LIBUNWIND_DEBUG_CFLAGS} --prefix=${CMAKE_BINARY_DIR}/build_deps/libunwind --enable-shared=0 --disable-block-signals ${LIBUNWIND_CONSERVATIVE_CHECKS} ${LIBUNWIND_DEBUG} ${LIBUNWIND_DEBUG_FRAME}
+                      BUILD_COMMAND ${MAKE_PRG} -j${TEST_THREADS}
+                      LOG_UPDATE ON
+                      LOG_CONFIGURE ON
+                      LOG_BUILD ON
+                      LOG_INSTALL ON)
+  # Tell CMake that patching libunwind means that we need to rebuild it:
+  ExternalProject_Add_Step(libunwind forcebuild
+      DEPENDS ${CMAKE_SOURCE_DIR}/build_deps/libunwind/pyston_patched
+      DEPENDERS build
+  )
+
+  link_directories(${CMAKE_BINARY_DIR}/build_deps/libunwind/lib)
 endif()
-ExternalProject_Add(libunwind
-                    PREFIX build_deps/libunwind
-                    SOURCE_DIR ${CMAKE_SOURCE_DIR}/build_deps/libunwind
-                    DEPENDS libunwind_patched
-                    UPDATE_COMMAND autoreconf -i
-                    CONFIGURE_COMMAND ${CMAKE_SOURCE_DIR}/build_deps/libunwind/configure ${LIBUNWIND_DEBUG_CFLAGS} --prefix=${CMAKE_BINARY_DIR}/build_deps/libunwind --enable-shared=0 --disable-block-signals ${LIBUNWIND_CONSERVATIVE_CHECKS} ${LIBUNWIND_DEBUG} ${LIBUNWIND_DEBUG_FRAME}
-                    BUILD_COMMAND ${MAKE_PRG} -j${TEST_THREADS}
-                    LOG_UPDATE ON
-                    LOG_CONFIGURE ON
-                    LOG_BUILD ON
-                    LOG_INSTALL ON)
-# Tell CMake that patching libunwind means that we need to rebuild it:
-ExternalProject_Add_Step(libunwind forcebuild
-    DEPENDS ${CMAKE_SOURCE_DIR}/build_deps/libunwind/pyston_patched
-    DEPENDERS build
-)
+
 # Tell CMake that rebuilding libunwind will touch the build files (why doesn't it know this??)
 # Otherwise, if you do something that triggers a rebuild (not a fresh build) of libunwind,
 # it will take another build to realize that any source files that #include libunwind.h
@@ -281,8 +318,10 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 endif()
 
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-long-long -Wno-aggregate-return -Wno-inline -Wno-redundant-decls -Wno-strict-overflow")
-  set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} -Wl,--no-as-needed") # without this, we don't seem to get jemalloc on gcc builds
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-long-long -Wno-aggregate-return -Wno-inline -Wno-redundant-decls -Wno-strict-overflow -Werror=noexcept-type")
+  if(USE_JEMALLOC)
+    set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} -Wl,--no-as-needed") # without this, we don't seem to get jemalloc on gcc builds
+  endif()
 endif()
 
 add_definitions(${LLVM_DEFINITIONS})
@@ -293,7 +332,6 @@ include_directories(${CMAKE_BINARY_DIR}/include/python2.7)
 include_directories(${LLVM_INCLUDE_DIRS})
 
 find_package(LibLZMA REQUIRED)
-link_directories(${CMAKE_BINARY_DIR}/build_deps/libunwind/lib)
 link_directories(${LLVM_LIBRARY_DIRS})
 
 ADD_PROFILE_FLAGS()
@@ -314,9 +352,11 @@ add_executable(pyston $<TARGET_OBJECTS:PYSTON_MAIN_OBJECT> $<TARGET_OBJECTS:PYST
 add_custom_command(TARGET pyston POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_BINARY_DIR}/pyston ${CMAKE_BINARY_DIR}/python DEPENDS pyston)
 
 # Wrap the stdlib in --whole-archive to force all the symbols to be included and eventually exported
-target_link_libraries(pyston -Wl,--whole-archive stdlib -Wl,--no-whole-archive pthread m z readline sqlite3 gmp mpfr ssl crypto liblz4 util ${LLVM_LIBS} ${LIBLZMA_LIBRARIES} ${OPTIONAL_LIBRARIES})
+target_link_libraries(pyston ${EXTRA_LD_DIR_FLAGS} ${WHOLE_ARCHIVE_FLAG} stdlib ${NO_WHOLE_ARCHIVE_FLAG} pthread m z readline sqlite3 gmp mpfr ssl crypto liblz4 util ${LLVM_LIBS} ${LIBLZMA_LIBRARIES} ${OPTIONAL_LIBRARIES})
 # ... ${CMAKE_BINARY_DIR}/jemalloc/lib/libjemalloc.a unwind)
-#add_dependencies(pyston libjemalloc)
+if(USE_JEMALLOC)
+  add_dependencies(pyston libjemalloc)
+endif()
 
 # test
 enable_testing()
@@ -392,11 +432,11 @@ set(CPACK_GENERATOR "TGZ")
 set(CMAKE_EXECUTABLE_FORMAT "ELF") # Otherwise cmake thinks this is a cross-compile
 install(TARGETS pyston DESTINATION ".")
 
+set(CPACK_SYSTEM_NAME ${CMAKE_SYSTEM_NAME_LOWER}-${CMAKE_SYSTEM_PROCESSOR})
+
 set(CPACK_PACKAGE_VERSION_MAJOR "0")
 set(CPACK_PACKAGE_VERSION_MINOR "7")
 set(CPACK_PACKAGE_VERSION_PATCH "0")
-
-set(CPACK_SYSTEM_NAME "linux64")
 
 set(CPACK_RESOURCE_FILE_LICENSE ${CMAKE_SOURCE_DIR}/LICENSE)
 set(CPACK_PACKAGE_DESCRIPTION_FILE ${CMAKE_SOURCE_DIR}/README.md)

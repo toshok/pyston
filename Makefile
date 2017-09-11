@@ -259,7 +259,7 @@ CC := $(CC_ENV) $(CC)
 CLANG_CXX := $(CXX_ENV) $(CLANG_CXX)
 
 BASE_SRCS := $(wildcard src/codegen/*.cpp) $(wildcard src/asm_writing/*.cpp) $(wildcard src/codegen/irgen/*.cpp) $(wildcard src/codegen/opt/*.cpp) $(wildcard src/analysis/*.cpp) $(wildcard src/core/*.cpp) src/codegen/profiling/profiling.cpp src/codegen/profiling/dumprof.cpp $(wildcard src/runtime/*.cpp) $(wildcard src/runtime/builtin_modules/*.cpp) $(wildcard src/gc/*.cpp) $(wildcard src/capi/*.cpp)
-MAIN_SRCS := $(BASE_SRCS) src/jit.cpp
+MAIN_SRCS := $(BASE_SRCS) src/main.cpp
 STDLIB_SRCS := $(wildcard src/runtime/inline/*.cpp)
 SRCS := $(MAIN_SRCS) $(STDLIB_SRCS)
 STDLIB_OBJS := stdlib.bc.o stdlib.stripped.bc.o
@@ -636,7 +636,7 @@ cmake_check:
 	@cmake --version >/dev/null || (echo "cmake not available"; false)
 	@$(NINJA) --version >/dev/null || (echo "ninja not available"; false)
 
-COMMON_CMAKE_OPTIONS := $(SRC_DIR) -DTEST_THREADS=$(TEST_THREADS) $(CMAKE_VALGRIND) -DCMAKE_C_COMPILER=gcc-7 -DCMAKE_CXX_COMPILER=g++-7 -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -GNinja
+COMMON_CMAKE_OPTIONS := $(SRC_DIR) -DTEST_THREADS=$(TEST_THREADS) $(CMAKE_VALGRIND) -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -GNinja #-DCMAKE_C_COMPILER=gcc-7 -DCMAKE_CXX_COMPILER=g++-7 
 
 .PHONY: cmake_check clang_check
 $(CMAKE_SETUP_DBG):

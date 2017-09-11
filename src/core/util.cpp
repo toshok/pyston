@@ -33,8 +33,7 @@ namespace pyston {
 
 int Timer::level = 0;
 
-Timer::Timer(long min_usec) : min_usec(min_usec), ended(true) {
-}
+Timer::Timer(long min_usec) : min_usec(min_usec), ended(true) {}
 
 Timer::Timer(const char* desc, long min_usec) : min_usec(min_usec), ended(true) {
     restart(desc);
@@ -68,7 +67,7 @@ uint64_t Timer::end(uint64_t* ended_at) {
                 }
                 printf("\033[32m");
                 if (us < 1000) {
-                    printf("%ldus %s\n", us, desc);
+                    printf("%lldus %s\n", us, desc);
                 } else if (us < 1000000) {
                     printf("%.1fms %s\n", us / 1000.0, desc);
                 } else {

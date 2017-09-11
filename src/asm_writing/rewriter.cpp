@@ -728,8 +728,8 @@ void Rewriter::_setAttr(RewriterVar* ptr, int offset, RewriterVar* val, assemble
     if (LOG_IC_ASSEMBLY)
         assembler->comment("_setAttr");
 
-    assert(store_wide == assembler::MovType::Q
-           || store_wide == assembler::MovType::L && "we only support this modes for now");
+    assert((store_wide == assembler::MovType::Q
+           || store_wide == assembler::MovType::L) && "we only support this modes for now");
 
     if (ptr->isScratchAllocation()) {
         auto dest_loc = indirectFor(ptr->getScratchLocation(offset));
@@ -773,7 +773,7 @@ void RewriterVar::dump() {
     for (Location l : locations)
         l.dump();
     if (is_constant)
-        printf("Constant value: 0x%lx\n", this->constant_value);
+        printf("Constant value: 0x%llx\n", this->constant_value);
 }
 
 assembler::Immediate RewriterVar::tryGetAsImmediate(bool* is_immediate) {

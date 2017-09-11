@@ -123,8 +123,8 @@ static constexpr int VREG_UNDEFINED = std::numeric_limits<int>::min();
 //  this creates a tuple whose elements are the constant idx -1, -2 and -3.
 //  in order to make it easier for a human to understand we print the actual value of the constant between | characters.
 
-
-#define PACKED __attribute__((packed)) __attribute__((__aligned__(1)))
+//#define PACKED __attribute__((packed)) __attribute__((__aligned__(1)))
+#define PACKED
 
 class BSTAllocator {
 public:
@@ -230,7 +230,7 @@ public:
     static BST_##opcode* create(BSTAllocator& alloc) { return new (alloc) BST_##opcode(); }                            \
     BST_##opcode() : base_class(BST_TYPE::opcode) {}                                                                   \
     int size_in_bytes() const { return sizeof(*this); }                                                                \
-    static void* operator new(size_t s, BSTAllocator & alloc) { return alloc.allocate(s); }                            \
+    static void* operator new(size_t s, BSTAllocator& alloc) { return alloc.allocate(s); }                             \
     static void operator delete(void* ptr) { RELEASE_ASSERT(0, ""); }
 
 #define BSTVARVREGS(opcode, base_class, num_elts, vreg_dst)                                                            \
@@ -242,7 +242,7 @@ public:                                                                         
     int size_in_bytes() const { return offsetof(BST_##opcode, vreg_dst) + num_elts * sizeof(int); }                    \
                                                                                                                        \
 private:                                                                                                               \
-    static void* operator new(size_t, BSTAllocator & alloc, int num_elts) {                                            \
+    static void* operator new(size_t, BSTAllocator& alloc, int num_elts) {                                             \
         return alloc.allocate(offsetof(BST_##opcode, vreg_dst) + num_elts * sizeof(int));                              \
     }                                                                                                                  \
     static void operator delete(void* ptr) { RELEASE_ASSERT(0, ""); }                                                  \
@@ -261,7 +261,7 @@ public:                                                                         
     int size_in_bytes() const { return offsetof(BST_##opcode, vreg_dst) + (num_elts + num_elts2) * sizeof(int); }      \
                                                                                                                        \
 private:                                                                                                               \
-    static void* operator new(size_t, BSTAllocator & alloc, int num_elts_total) {                                      \
+    static void* operator new(size_t, BSTAllocator& alloc, int num_elts_total) {                                       \
         return alloc.allocate(offsetof(BST_##opcode, vreg_dst) + num_elts_total * sizeof(int));                        \
     }                                                                                                                  \
     static void operator delete(void* ptr) { RELEASE_ASSERT(0, ""); }                                                  \
@@ -282,7 +282,7 @@ public:                                                                         
     int size_in_bytes() const { return offsetof(BST_##opcode, vreg_dst) + (num_elts + num_elts2) * sizeof(int); }      \
                                                                                                                        \
 private:                                                                                                               \
-    static void* operator new(size_t, BSTAllocator & alloc, int num_elts_total) {                                      \
+    static void* operator new(size_t, BSTAllocator& alloc, int num_elts_total) {                                       \
         return alloc.allocate(offsetof(BST_##opcode, vreg_dst) + num_elts_total * sizeof(int));                        \
     }                                                                                                                  \
     BST_##opcode(int num_elts, int num_elts2) : BST_Call(BST_TYPE::opcode, num_elts, num_elts2) {                      \
@@ -465,10 +465,7 @@ public:
     BSTFIXEDVREGS(Compare, BST_stmt_with_dest)
 } PACKED;
 
-class BST_Dict : public BST_stmt_with_dest {
-public:
-    BSTFIXEDVREGS(Dict, BST_stmt_with_dest)
-} PACKED;
+class BST_Dict : public BST_stmt_with_dest{ public : BSTFIXEDVREGS(Dict, BST_stmt_with_dest) } PACKED;
 
 class BST_DeleteAttr : public BST_stmt {
 public:
@@ -628,7 +625,7 @@ class CFGBlock;
 class BST_Branch : public BST_stmt {
 public:
     int vreg_test = VREG_UNDEFINED;
-    CFGBlock* iftrue, *iffalse;
+    CFGBlock *iftrue, *iffalse;
 
     BSTFIXEDVREGS(Branch, BST_stmt)
 } PACKED;
@@ -641,15 +638,9 @@ public:
 } PACKED;
 
 // grabs the info about the last raised exception
-class BST_Landingpad : public BST_stmt_with_dest {
-public:
-    BSTFIXEDVREGS(Landingpad, BST_stmt_with_dest)
-} PACKED;
+class BST_Landingpad : public BST_stmt_with_dest{ public : BSTFIXEDVREGS(Landingpad, BST_stmt_with_dest) } PACKED;
 
-class BST_Locals : public BST_stmt_with_dest {
-public:
-    BSTFIXEDVREGS(Locals, BST_stmt_with_dest)
-} PACKED;
+class BST_Locals : public BST_stmt_with_dest{ public : BSTFIXEDVREGS(Locals, BST_stmt_with_dest) } PACKED;
 
 class BST_GetIter : public BST_stmt_with_dest {
 public:
@@ -707,10 +698,7 @@ public:
     BSTFIXEDVREGS(SetExcInfo, BST_stmt)
 } PACKED;
 
-class BST_UncacheExcInfo : public BST_stmt {
-public:
-    BSTFIXEDVREGS(UncacheExcInfo, BST_stmt)
-} PACKED;
+class BST_UncacheExcInfo : public BST_stmt{ public : BSTFIXEDVREGS(UncacheExcInfo, BST_stmt) } PACKED;
 
 class BST_HasNext : public BST_stmt_with_dest {
 public:

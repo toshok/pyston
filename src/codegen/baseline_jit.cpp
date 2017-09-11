@@ -66,7 +66,7 @@ constexpr assembler::RegisterSet JitCodeBlock::additional_regs;
 JitCodeBlock::MemoryManager::MemoryManager() {
     int protection = PROT_READ | PROT_WRITE | PROT_EXEC;
     int flags = MAP_PRIVATE | MAP_ANONYMOUS;
-#if ENABLE_BASELINEJIT_MAP_32BIT
+#if defined(ENABLE_BASELINEJIT_MAP_32BIT) && defined(MAP_32BIT)
     flags |= MAP_32BIT;
 #endif
     addr = (uint8_t*)mmap(NULL, JitCodeBlock::memory_size, protection, flags, -1, 0);
@@ -233,9 +233,9 @@ RewriterVar* JitFragmentWriter::emitAugbinop(BST_stmt* node, RewriterVar* lhs, R
 
 RewriterVar* JitFragmentWriter::emitApplySlice(RewriterVar* target, RewriterVar* lower, RewriterVar* upper) {
     if (!lower)
-        lower = imm(0ul);
+        lower = imm(0ull);
     if (!upper)
-        upper = imm(0ul);
+        upper = imm(0ull);
     return emitPPCall((void*)applySlice, { target, lower, upper }, 256).first->setType(RefType::OWNED);
 }
 
@@ -254,9 +254,9 @@ RewriterVar* JitFragmentWriter::emitCallattr(BST_stmt* node, RewriterVar* obj, B
     call_args.push_back(obj);
     call_args.push_back(attr_var);
     call_args.push_back(flags_var);
-    call_args.push_back(args.size() > 0 ? args[0] : imm(0ul));
-    call_args.push_back(args.size() > 1 ? args[1] : imm(0ul));
-    call_args.push_back(args.size() > 2 ? args[2] : imm(0ul));
+    call_args.push_back(args.size() > 0 ? args[0] : imm(0ull));
+    call_args.push_back(args.size() > 1 ? args[1] : imm(0ull));
+    call_args.push_back(args.size() > 2 ? args[2] : imm(0ull));
 
     llvm::ArrayRef<RewriterVar*> additional_uses;
     if (args.size() > 3) {
@@ -264,7 +264,7 @@ RewriterVar* JitFragmentWriter::emitCallattr(BST_stmt* node, RewriterVar* obj, B
         RewriterVar* scratch = allocArgs(additional_uses, RewriterVar::SetattrType::REF_USED);
         call_args.push_back(scratch);
     } else if (keyword_names) {
-        call_args.push_back(imm(0ul));
+        call_args.push_back(imm(0ull));
     }
 
     if (keyword_names)
@@ -526,9 +526,9 @@ RewriterVar* JitFragmentWriter::emitRuntimeCall(BST_stmt* node, RewriterVar* obj
     RewriterVar::SmallVector call_args;
     call_args.push_back(obj);
     call_args.push_back(argspec_var);
-    call_args.push_back(args.size() > 0 ? args[0] : imm(0ul));
-    call_args.push_back(args.size() > 1 ? args[1] : imm(0ul));
-    call_args.push_back(args.size() > 2 ? args[2] : imm(0ul));
+    call_args.push_back(args.size() > 0 ? args[0] : imm(0ull));
+    call_args.push_back(args.size() > 1 ? args[1] : imm(0ull));
+    call_args.push_back(args.size() > 2 ? args[2] : imm(0ull));
 
     llvm::ArrayRef<RewriterVar*> additional_uses;
     if (args.size() > 3) {
@@ -536,7 +536,7 @@ RewriterVar* JitFragmentWriter::emitRuntimeCall(BST_stmt* node, RewriterVar* obj
         RewriterVar* scratch = allocArgs(additional_uses, RewriterVar::SetattrType::REF_USED);
         call_args.push_back(scratch);
     } else
-        call_args.push_back(imm(0ul));
+        call_args.push_back(imm(0ull));
     if (keyword_names)
         call_args.push_back(imm(keyword_names));
 
@@ -607,9 +607,9 @@ RewriterVar* JitFragmentWriter::emitYield(RewriterVar* v) {
 void JitFragmentWriter::emitAssignSlice(RewriterVar* target, RewriterVar* lower, RewriterVar* upper,
                                         RewriterVar* value) {
     if (!lower)
-        lower = imm(0ul);
+        lower = imm(0ull);
     if (!upper)
-        upper = imm(0ul);
+        upper = imm(0ull);
     emitPPCall((void*)assignSlice, { target, lower, upper, value }, 256).first;
 }
 
@@ -639,9 +639,9 @@ void JitFragmentWriter::emitDelName(InternedString name) {
 
 void JitFragmentWriter::emitExec(RewriterVar* code, RewriterVar* globals, RewriterVar* locals, FutureFlags flags) {
     if (!globals)
-        globals = imm(0ul);
+        globals = imm(0ull);
     if (!locals)
-        locals = imm(0ul);
+        locals = imm(0ull);
     call(false, (void*)exec, code, globals, locals, imm(flags));
 }
 
@@ -673,9 +673,9 @@ void JitFragmentWriter::emitPrint(RewriterVar* dest, RewriterVar* var, bool nl) 
     if (LOG_BJIT_ASSEMBLY)
         comment("BJIT: emitPrint() start");
     if (!dest)
-        dest = imm(0ul);
+        dest = imm(0ull);
     if (!var)
-        var = imm(0ul);
+        var = imm(0ull);
     call(false, (void*)printHelper, dest, var, imm(nl));
     if (LOG_BJIT_ASSEMBLY)
         comment("BJIT: emitPrint() end");
@@ -1232,7 +1232,7 @@ void JitFragmentWriter::_emitRecordType(RewriterVar* obj_cls_var) {
     {
         assembler::ForwardJump je(*assembler, assembler::COND_EQUAL);
         assembler->mov(obj_cls_reg, last_seen_indirect);
-        assembler->movq(assembler::Immediate(0ul), last_seen_count);
+        assembler->movq(assembler::Immediate(0ull), last_seen_count);
     }
     assembler->incq(last_seen_count);
 

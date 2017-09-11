@@ -66,12 +66,11 @@ bool Stats::enabled;
 timespec Stats::start_ts;
 uint64_t Stats::start_tick;
 
-StatCounter::StatCounter(const std::string& name) : counter(Stats::getStatCounter(name)) {
-}
+StatCounter::StatCounter(const std::string& name) : counter(Stats::getStatCounter(name)) {}
 
 StatPerThreadCounter::StatPerThreadCounter(const std::string& name) {
     char buf[80];
-    snprintf(buf, 80, "%s_t%ld", name.c_str(), pthread_self());
+    snprintf(buf, 80, "%s_t%p", name.c_str(), pthread_self());
     counter = Stats::getStatCounter(buf);
 }
 
@@ -141,10 +140,10 @@ void Stats::dump(bool includeZeros) {
         uint64_t count = *pairs[i].second;
         if (includeZeros || count > 0) {
             if (startswith(pairs[i].first, "us_") || startswith(pairs[i].first, "_init_us_")) {
-                fprintf(stderr, "%s: %lu\n", pairs[i].first.c_str(), (uint64_t)(count / cycles_per_us));
+                fprintf(stderr, "%s: %llu\n", pairs[i].first.c_str(), (uint64_t)(count / cycles_per_us));
 
             } else
-                fprintf(stderr, "%s: %lu\n", pairs[i].first.c_str(), count);
+                fprintf(stderr, "%s: %llu\n", pairs[i].first.c_str(), count);
 
             if (startswith(pairs[i].first, "us_timer_"))
                 accumulated_stat_timer_ticks += count;
@@ -155,7 +154,7 @@ void Stats::dump(bool includeZeros) {
     }
 
     if (includeZeros || accumulated_stat_timer_ticks > 0)
-        fprintf(stderr, "ticks_all_timers: %lu\n", accumulated_stat_timer_ticks);
+        fprintf(stderr, "ticks_all_timers: %llu\n", accumulated_stat_timer_ticks);
 
 #if 0
     // I want to enable this, but am leaving it disabled for the time

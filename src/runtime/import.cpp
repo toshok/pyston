@@ -17,7 +17,9 @@
 #include <dlfcn.h>
 #include <fstream>
 #include <limits.h>
+#ifndef __APPLE__
 #include <link.h>
+#endif
 
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/Path.h"

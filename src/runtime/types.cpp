@@ -85,7 +85,9 @@ extern "C" void init_sre();
 extern "C" void init_ssl();
 extern "C" void initstrop();
 extern "C" void init_struct();
+#if defined(HAVE_GETSPNAM) || defined(HAVE_GETSPENT)
 extern "C" void initspwd();
+#endif
 extern "C" void inittime();
 extern "C" void initunicodedata();
 extern "C" void init_weakref();
@@ -374,21 +376,17 @@ extern "C" BoxedFunctionBase::BoxedFunctionBase(BoxedCode* code, llvm::ArrayRef<
     }
 }
 
-BoxedFunction::BoxedFunction(BoxedCode* code) : BoxedFunction(code, {}) {
-}
+BoxedFunction::BoxedFunction(BoxedCode* code) : BoxedFunction(code, {}) {}
 
 BoxedFunction::BoxedFunction(BoxedCode* code, llvm::ArrayRef<Box*> defaults, BoxedClosure* closure, Box* globals,
                              bool can_change_defaults)
-    : BoxedFunctionBase(code, defaults, closure, globals, can_change_defaults) {
-}
+    : BoxedFunctionBase(code, defaults, closure, globals, can_change_defaults) {}
 
-BoxedBuiltinFunctionOrMethod::BoxedBuiltinFunctionOrMethod(BoxedCode* code) : BoxedBuiltinFunctionOrMethod(code, {}) {
-}
+BoxedBuiltinFunctionOrMethod::BoxedBuiltinFunctionOrMethod(BoxedCode* code) : BoxedBuiltinFunctionOrMethod(code, {}) {}
 
 BoxedBuiltinFunctionOrMethod::BoxedBuiltinFunctionOrMethod(BoxedCode* code, std::initializer_list<Box*> defaults,
                                                            BoxedClosure* closure)
-    : BoxedFunctionBase(code, defaults, closure) {
-}
+    : BoxedFunctionBase(code, defaults, closure) {}
 
 static void functionDtor(Box* b) {
     assert(isSubclass(b->cls, function_cls) || isSubclass(b->cls, builtin_function_or_method_cls));
@@ -612,7 +610,7 @@ Box* typeCall(Box* obj, BoxedTuple* vararg, BoxedDict* kwargs) {
     if (args_to_pass > 3)
         args = (Box**)alloca(sizeof(Box*) * (args_to_pass - 3));
 
-    Box* arg1, *arg2, *arg3;
+    Box *arg1, *arg2, *arg3;
     arg1 = obj;
     for (int i = 0; i < n; i++) {
         getArg(i + 1, arg1, arg2, arg3, args) = vararg->elts[i];
@@ -771,9 +769,10 @@ static Box* typeCallInner(CallRewriteArgs* rewrite_args, ArgPassSpec argspec, Bo
             assert(arg1 == cls);
 
             if (rewrite_args) {
-                rewrite_args->out_rtn = rewrite_args->rewriter->call(true, (void*)unicodeNewHelper, rewrite_args->arg1,
-                                                                     rewrite_args->arg2, rewrite_args->arg3,
-                                                                     rewrite_args->args)->setType(RefType::OWNED);
+                rewrite_args->out_rtn = rewrite_args->rewriter
+                                            ->call(true, (void*)unicodeNewHelper, rewrite_args->arg1,
+                                                   rewrite_args->arg2, rewrite_args->arg3, rewrite_args->args)
+                                            ->setType(RefType::OWNED);
 
                 rewrite_args->out_success = true;
             }
@@ -799,9 +798,10 @@ static Box* typeCallInner(CallRewriteArgs* rewrite_args, ArgPassSpec argspec, Bo
             assert(arg1 == cls);
 
             if (rewrite_args) {
-                rewrite_args->out_rtn
-                    = rewrite_args->rewriter->call(true, (void*)cpythonTypeCall, rewrite_args->arg1, rewrite_args->arg2,
-                                                   rewrite_args->arg3)->setType(RefType::OWNED);
+                rewrite_args->out_rtn = rewrite_args->rewriter
+                                            ->call(true, (void*)cpythonTypeCall, rewrite_args->arg1, rewrite_args->arg2,
+                                                   rewrite_args->arg3)
+                                            ->setType(RefType::OWNED);
                 rewrite_args->out_success = true;
             }
 
@@ -920,7 +920,13 @@ static Box* typeCallInner(CallRewriteArgs* rewrite_args, ArgPassSpec argspec, Bo
     //
 
     // For debugging, keep track of why we think we can rewrite this:
-    enum { UNKNOWN, MAKES_CLS, NO_INIT, TYPE_NEW_SPECIAL_CASE, } which_init = UNKNOWN;
+    enum {
+        UNKNOWN,
+        MAKES_CLS,
+        NO_INIT,
+        TYPE_NEW_SPECIAL_CASE,
+    } which_init
+        = UNKNOWN;
 
     // These are __new__ functions that have the property that __new__(kls) always returns an instance of kls.
     // These are ok to call regardless of what type was requested.
@@ -1146,8 +1152,9 @@ static Box* typeCallInner(CallRewriteArgs* rewrite_args, ArgPassSpec argspec, Bo
 
             if (rewrite_args) {
                 rewrite_args->out_rtn
-                    = rewrite_args->rewriter->call(true, (void*)InitHelper::call, r_made, r_ccls, rewrite_args->arg2,
-                                                   rewrite_args->arg3)->setType(RefType::OWNED);
+                    = rewrite_args->rewriter
+                          ->call(true, (void*)InitHelper::call, r_made, r_ccls, rewrite_args->arg2, rewrite_args->arg3)
+                          ->setType(RefType::OWNED);
                 r_made->refConsumed();
                 rewrite_args->out_success = true;
             }
@@ -1374,10 +1381,10 @@ extern "C" void PyType_SetDict(PyTypeObject* type, STOLEN(PyObject*) dict) noexc
 Box* dict_descr = NULL;
 
 extern "C" {
-BoxedClass* object_cls, *type_cls, *none_cls, *bool_cls, *int_cls, *float_cls,
-    * str_cls = NULL, *function_cls, *instancemethod_cls, *list_cls, *slice_cls, *module_cls, *dict_cls, *tuple_cls,
-      *closure_cls, *generator_cls, *complex_cls, *basestring_cls, *property_cls, *staticmethod_cls, *classmethod_cls,
-      *attrwrapper_cls, *builtin_function_or_method_cls, *attrwrapperiter_cls, *set_cls, *frozenset_cls;
+BoxedClass *object_cls, *type_cls, *none_cls, *bool_cls, *int_cls, *float_cls,
+    *str_cls = NULL, *function_cls, *instancemethod_cls, *list_cls, *slice_cls, *module_cls, *dict_cls, *tuple_cls,
+    *closure_cls, *generator_cls, *complex_cls, *basestring_cls, *property_cls, *staticmethod_cls, *classmethod_cls,
+    *attrwrapper_cls, *builtin_function_or_method_cls, *attrwrapperiter_cls, *set_cls, *frozenset_cls;
 
 BoxedTuple* EmptyTuple;
 }
@@ -1834,8 +1841,8 @@ static Box* instancemethodRepr(Box* b) {
     Box* self = a->obj;
     Box* func = a->func;
     Box* klass = a->im_class;
-    Box* funcname = NULL, * klassname = NULL, * result = NULL;
-    const char* sfuncname = "?", * sklassname = "?";
+    Box *funcname = NULL, *klassname = NULL, *result = NULL;
+    const char *sfuncname = "?", *sklassname = "?";
 
     static BoxedString* name_str = getStaticString("__name__");
     funcname = getattrInternal<CXX>(func, name_str);
@@ -2173,7 +2180,7 @@ Box* typeHash(BoxedClass* self) {
 }
 
 static PyObject* type_subclasses(PyTypeObject* type, PyObject* args_ignored) noexcept {
-    PyObject* list, *raw, *ref;
+    PyObject *list, *raw, *ref;
     Py_ssize_t i, n;
 
     list = PyList_New(0);
@@ -3197,11 +3204,11 @@ static PyObject* slotnames(PyObject* cls) noexcept {
 }
 
 static PyObject* reduce_2(PyObject* obj) noexcept {
-    PyObject* cls, *getnewargs;
-    PyObject* args = NULL, * args2 = NULL;
-    PyObject* getstate = NULL, * state = NULL, * names = NULL;
-    PyObject* slots = NULL, * listitems = NULL, * dictitems = NULL;
-    PyObject* copyreg = NULL, * newobj = NULL, * res = NULL;
+    PyObject *cls, *getnewargs;
+    PyObject *args = NULL, *args2 = NULL;
+    PyObject *getstate = NULL, *state = NULL, *names = NULL;
+    PyObject *slots = NULL, *listitems = NULL, *dictitems = NULL;
+    PyObject *copyreg = NULL, *newobj = NULL, *res = NULL;
     Py_ssize_t i, n;
 
     cls = PyObject_GetAttrString(obj, "__class__");
@@ -3260,7 +3267,7 @@ static PyObject* reduce_2(PyObject* obj) noexcept {
                is stored on the class so accessible to other
                threads, which may be run by DECREF */
             for (i = 0; i < PyList_GET_SIZE(names); i++) {
-                PyObject* name, *value;
+                PyObject *name, *value;
                 name = PyList_GET_ITEM(names, i);
                 value = PyObject_GetAttr(obj, name);
                 if (value == NULL)
@@ -3335,7 +3342,7 @@ end:
 }
 
 static PyObject* _common_reduce(PyObject* self, int proto) noexcept {
-    PyObject* copyreg, *res;
+    PyObject *copyreg, *res;
 
     if (proto >= 2)
         return reduce_2(self);
@@ -3360,7 +3367,7 @@ static PyObject* object_reduce(PyObject* self, PyObject* args) noexcept {
 }
 
 static PyObject* object_reduce_ex(PyObject* self, PyObject* args) noexcept {
-    PyObject* reduce, *res;
+    PyObject *reduce, *res;
     int proto = 0;
 
     if (!PyArg_ParseTuple(args, "|i:__reduce_ex__", &proto))
@@ -3370,7 +3377,7 @@ static PyObject* object_reduce_ex(PyObject* self, PyObject* args) noexcept {
     if (reduce == NULL)
         PyErr_Clear();
     else {
-        PyObject* cls, *clsreduce, *objreduce;
+        PyObject *cls, *clsreduce, *objreduce;
         int override;
         cls = PyObject_GetAttrString(self, "__class__");
         if (cls == NULL) {
@@ -3436,7 +3443,8 @@ static PyObject* object_format(PyObject* self, PyObject* args) noexcept {
         if (format_len > 0) {
             if (PyErr_WarnEx(PyExc_PendingDeprecationWarning, "object.__format__ with a non-empty format "
                                                               "string is deprecated",
-                             1) < 0) {
+                             1)
+                < 0) {
                 goto done;
             }
             /* Eventually this will become an error:
@@ -3680,7 +3688,8 @@ static PyObject* type_richcompare(PyObject* v, PyObject* w, int op) noexcept {
     if (Py_Py3kWarningFlag && op != Py_EQ && op != Py_NE
         && PyErr_WarnEx(PyExc_DeprecationWarning, "type inequality comparisons not supported "
                                                   "in 3.x",
-                        1) < 0) {
+                        1)
+               < 0) {
         return NULL;
     }
 
@@ -4115,60 +4124,63 @@ static int _check_and_flush(FILE* stream) {
 }
 
 extern "C" {
-struct _inittab _PyImport_Inittab[] = { { "array", initarray },
-                                        { "_ast", init_ast },
-                                        { "binascii", initbinascii },
-                                        { "_bisect", init_bisect },
-                                        { "_codecs", init_codecs },
-                                        { "_collections", init_collections },
-                                        { "cStringIO", initcStringIO },
-                                        { "_csv", init_csv },
-                                        { "datetime", initdatetime },
-                                        { "errno", initerrno },
-                                        { "fcntl", initfcntl },
-                                        { "_functools", init_functools },
-                                        { "_heapq", init_heapq },
-                                        { "imp", initimp },
-                                        { "_io", init_io },
-                                        { "itertools", inititertools },
-                                        { "marshal", PyMarshal_Init },
-                                        { "math", initmath },
-                                        { "_md5", init_md5 },
-                                        { "operator", initoperator },
-                                        { "posix", initposix },
-                                        { "pwd", initpwd },
-                                        { "_random", init_random },
-                                        { "resource", initresource },
-                                        { "select", initselect },
-                                        { "_sha", init_sha },
-                                        { "_sha256", init_sha256 },
-                                        { "_sha512", init_sha512 },
-                                        { "signal", initsignal },
-                                        { "_socket", init_socket },
-                                        { "_sqlite3", init_sqlite3 },
-                                        { "_sre", init_sre },
-                                        { "_ssl", init_ssl },
-                                        { "strop", initstrop },
-                                        { "_struct", init_struct },
-                                        { "spwd", initspwd },
-                                        { "time", inittime },
-                                        { "unicodedata", initunicodedata },
-                                        { "_warnings", _PyWarnings_Init },
-                                        { "_weakref", init_weakref },
-                                        { "zipimport", initzipimport },
-                                        { "zlib", initzlib },
+struct _inittab _PyImport_Inittab[]
+    = { { "array", initarray },
+        { "_ast", init_ast },
+        { "binascii", initbinascii },
+        { "_bisect", init_bisect },
+        { "_codecs", init_codecs },
+        { "_collections", init_collections },
+        { "cStringIO", initcStringIO },
+        { "_csv", init_csv },
+        { "datetime", initdatetime },
+        { "errno", initerrno },
+        { "fcntl", initfcntl },
+        { "_functools", init_functools },
+        { "_heapq", init_heapq },
+        { "imp", initimp },
+        { "_io", init_io },
+        { "itertools", inititertools },
+        { "marshal", PyMarshal_Init },
+        { "math", initmath },
+        { "_md5", init_md5 },
+        { "operator", initoperator },
+        { "posix", initposix },
+        { "pwd", initpwd },
+        { "_random", init_random },
+        { "resource", initresource },
+        { "select", initselect },
+        { "_sha", init_sha },
+        { "_sha256", init_sha256 },
+        { "_sha512", init_sha512 },
+        { "signal", initsignal },
+        { "_socket", init_socket },
+        { "_sqlite3", init_sqlite3 },
+        { "_sre", init_sre },
+        { "_ssl", init_ssl },
+        { "strop", initstrop },
+        { "_struct", init_struct },
+#if defined(HAVE_GETSPNAM) || defined(HAVE_GETSPENT)
+        { "spwd", initspwd },
+#endif
+        { "time", inittime },
+        { "unicodedata", initunicodedata },
+        { "_warnings", _PyWarnings_Init },
+        { "_weakref", init_weakref },
+        { "zipimport", initzipimport },
+        { "zlib", initzlib },
 
-                                        { "gc", initgc },
-                                        { "__pyston__", setupPyston },
-                                        { "thread", setupThread },
+        { "gc", initgc },
+        { "__pyston__", setupPyston },
+        { "thread", setupThread },
 
-                                        { "__main__", NULL },
-                                        { "__builtin__", NULL },
-                                        { "sys", NULL },
-                                        { "exceptions", NULL },
+        { "__main__", NULL },
+        { "__builtin__", NULL },
+        { "sys", NULL },
+        { "exceptions", NULL },
 
 
-                                        { 0, 0 } };
+        { 0, 0 } };
 }
 
 bool TRACK_ALLOCATIONS = false;
@@ -4207,8 +4219,8 @@ void setupRuntime() {
     object_cls->tp_new = object_new;
     type_cls->tp_getattro = type_getattro;
 
-    none_cls = new (0)
-        BoxedClass(object_cls, 0, 0, sizeof(Box), false, "NoneType", false, NULL, NULL, /* is_gc */ false);
+    none_cls
+        = new (0) BoxedClass(object_cls, 0, 0, sizeof(Box), false, "NoneType", false, NULL, NULL, /* is_gc */ false);
     Py_None = new (none_cls) Box();
     constants.push_back(Py_None);
     assert(Py_None->cls);
@@ -4253,9 +4265,9 @@ void setupRuntime() {
     list_cls = new (0) BoxedClass(object_cls, 0, 0, sizeof(BoxedList), false, "list", true, BoxedList::dealloc, NULL,
                                   true, BoxedList::traverse, BoxedList::clear);
     list_cls->tp_flags |= Py_TPFLAGS_LIST_SUBCLASS;
-    attrwrapper_cls = new (0)
-        BoxedClass(object_cls, 0, 0, sizeof(AttrWrapper), false, "attrwrapper", false, AttrWrapper::dealloc, NULL, true,
-                   AttrWrapper::traverse, AttrWrapper::tp_clear);
+    attrwrapper_cls
+        = new (0) BoxedClass(object_cls, 0, 0, sizeof(AttrWrapper), false, "attrwrapper", false, AttrWrapper::dealloc,
+                             NULL, true, AttrWrapper::traverse, AttrWrapper::tp_clear);
     dict_cls = new (0) BoxedClass(object_cls, 0, 0, sizeof(BoxedDict), false, "dict", true, BoxedDict::dealloc, NULL,
                                   true, BoxedDict::traverse, BoxedDict::clear);
     dict_cls->tp_flags |= Py_TPFLAGS_DICT_SUBCLASS;
@@ -4680,7 +4692,7 @@ void setupRuntime() {
     attrwrapperiter_cls->tp_iternext = AttrWrapperIter::next_capi;
 
     PyType_Ready(&PyFile_Type);
-    PyObject* sysin, *sysout, *syserr;
+    PyObject *sysin, *sysout, *syserr;
     sysin = PyFile_FromFile(stdin, "<stdin>", "r", NULL);
     sysout = PyFile_FromFile(stdout, "<stdout>", "w", _check_and_flush);
     syserr = PyFile_FromFile(stderr, "<stderr>", "w", _check_and_flush);

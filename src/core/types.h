@@ -24,11 +24,11 @@
 #include <stddef.h>
 #include <vector>
 
+#include "Python.h"
 #include "llvm/ADT/ArrayRef.h"
-#include "llvm/ADT/iterator_range.h"
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/ADT/TinyPtrVector.h"
-#include "Python.h"
+#include "llvm/ADT/iterator_range.h"
 
 #include "core/common.h"
 #include "core/stats.h"
@@ -132,10 +132,10 @@ template <class V> class ValuedCompilerType;
 typedef ValuedCompilerType<llvm::Value*> ConcreteCompilerType;
 ConcreteCompilerType* typeFromClass(BoxedClass*);
 
-extern ConcreteCompilerType* UNBOXED_INT, *BOXED_INT, *LONG, *UNBOXED_FLOAT, *BOXED_FLOAT, *UNKNOWN, *BOOL, *STR, *NONE,
+extern ConcreteCompilerType *UNBOXED_INT, *BOXED_INT, *LONG, *UNBOXED_FLOAT, *BOXED_FLOAT, *UNKNOWN, *BOOL, *STR, *NONE,
     *LIST, *SLICE, *MODULE, *DICT, *BOOL, *BOXED_BOOL, *BOXED_TUPLE, *SET, *FROZENSET, *CLOSURE, *GENERATOR,
     *BOXED_COMPLEX, *FRAME_INFO;
-extern CompilerType* UNDEF, *INT, *FLOAT, *UNBOXED_SLICE;
+extern CompilerType *UNDEF, *INT, *FLOAT, *UNBOXED_SLICE;
 
 // CompilerVariables are the way that the LLVM JIT tracks variables, which are a CompilerType combined with some sort
 // of value (the type of value depends on the type of CompilerType).
@@ -862,7 +862,8 @@ public:
     // getattr() does the equivalent of PyDict_GetItem(obj->dict, attr): it looks up the attribute's value on the
     // object's attribute storage. it doesn't look at other objects or do any descriptor logic.
     template <Rewritable rewritable = REWRITABLE>
-    BORROWED(Box*) getattr(BoxedString* attr, GetattrRewriteArgs* rewrite_args);
+    BORROWED(Box*)
+    getattr(BoxedString* attr, GetattrRewriteArgs* rewrite_args);
     BORROWED(Box*) getattr(BoxedString* attr) { return getattr<NOT_REWRITABLE>(attr, NULL); }
     BORROWED(Box*) getattrString(const char* attr);
 
@@ -898,7 +899,7 @@ static_assert(offsetof(Box, cls) == offsetof(struct _object, ob_type), "");
 // `new (str_cls) BoxedString()` everywhere, we need to tell C++ what the default class is.
 // We can do this by putting `DEFAULT_CLASS(str_cls);` anywhere in the definition of BoxedString.
 #define DEFAULT_CLASS(default_cls)                                                                                     \
-    void* operator new(size_t size, BoxedClass * cls) __attribute__((visibility("default"))) {                         \
+    void* operator new(size_t size, BoxedClass* cls) __attribute__((visibility("default"))) {                          \
         assert(cls->tp_itemsize == 0);                                                                                 \
         return Box::operator new(size, cls);                                                                           \
     }                                                                                                                  \
@@ -909,7 +910,7 @@ static_assert(offsetof(Box, cls) == offsetof(struct _object, ob_type), "");
 
 // A faster version that can be used for classes that can use "FAST" operator new
 #define DEFAULT_CLASS_SIMPLE(default_cls, is_gc)                                                                       \
-    void* operator new(size_t size, BoxedClass * cls) __attribute__((visibility("default"))) {                         \
+    void* operator new(size_t size, BoxedClass* cls) __attribute__((visibility("default"))) {                          \
         return Box::operator new(size, cls);                                                                           \
     }                                                                                                                  \
     void* operator new(size_t size) __attribute__((visibility("default"))) { return newFast<is_gc>(size, default_cls); }
@@ -937,7 +938,7 @@ static_assert(offsetof(BoxVar, ob_size) == offsetof(struct _varobject, ob_size),
         static_assert(std::is_base_of<BoxVar, std::remove_pointer<decltype(this)>::type>::value, "");                  \
     }                                                                                                                  \
                                                                                                                        \
-    void* operator new(size_t size, BoxedClass * cls, size_t nitems) __attribute__((visibility("default"))) {          \
+    void* operator new(size_t size, BoxedClass* cls, size_t nitems) __attribute__((visibility("default"))) {           \
         assert(cls->tp_itemsize == itemsize);                                                                          \
         return BoxVar::operator new(size, cls, nitems);                                                                \
     }                                                                                                                  \
@@ -953,7 +954,7 @@ static_assert(offsetof(BoxVar, ob_size) == offsetof(struct _varobject, ob_size),
         static_assert(std::is_base_of<BoxVar, std::remove_pointer<decltype(this)>::type>::value, "");                  \
     }                                                                                                                  \
                                                                                                                        \
-    void* operator new(size_t size, BoxedClass * cls, size_t nitems) __attribute__((visibility("default"))) {          \
+    void* operator new(size_t size, BoxedClass* cls, size_t nitems) __attribute__((visibility("default"))) {           \
         assert(cls->tp_itemsize == itemsize);                                                                          \
         return BoxVar::operator new(size, cls, nitems);                                                                \
     }                                                                                                                  \
@@ -1003,14 +1004,14 @@ void raiseSyntaxErrorHelper(llvm::StringRef file, llvm::StringRef func, AST* nod
 struct LineInfo {
 public:
     int line;
-    BoxedString* file, *func;
+    BoxedString *file, *func;
 
     LineInfo(int line, BoxedString* file, BoxedString* func) : line(line), file(file), func(func) {}
 };
 
 // A data structure to simplify passing around all the data about a thrown exception.
 struct ExcInfo {
-    Box* type, *value, *traceback;
+    Box *type, *value, *traceback;
 
     constexpr ExcInfo(Box* type, Box* value, Box* traceback) : type(type), value(value), traceback(traceback) {}
     void clear();

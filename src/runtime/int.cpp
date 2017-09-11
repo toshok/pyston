@@ -69,7 +69,7 @@ static PyIntBlock* block_list = NULL;
 PyIntObject* BoxedInt::free_list = NULL;
 
 PyIntObject* BoxedInt::fill_free_list(void) noexcept {
-    PyIntObject* p, *q;
+    PyIntObject *p, *q;
     /* Python's object allocator isn't appropriate for large blocks. */
     p = (PyIntObject*)PyMem_MALLOC(sizeof(PyIntBlock));
     if (p == NULL)
@@ -283,7 +283,7 @@ extern "C" PyObject* PyInt_FromString(const char* s, char** pend, int base) noex
     char* end;
     long x;
     Py_ssize_t slen;
-    PyObject* sobj, *srepr;
+    PyObject *sobj, *srepr;
 
     if ((base != 0 && base < 2) || base > 36) {
         PyErr_SetString(PyExc_ValueError, "int() base must be >= 2 and <= 36");
@@ -397,14 +397,14 @@ bool __builtin_smull_overflow(i64 lhs, i64 rhs, i64* result) {
 
 extern "C" Box* add_i64_i64(i64 lhs, i64 rhs) {
     i64 result;
-    if (!__builtin_saddl_overflow(lhs, rhs, &result))
+    if (!__builtin_saddll_overflow(lhs, rhs, &result))
         return boxInt(result);
     return longAdd(autoDecref(boxLong(lhs)), autoDecref(boxLong(rhs)));
 }
 
 extern "C" Box* sub_i64_i64(i64 lhs, i64 rhs) {
     i64 result;
-    if (!__builtin_ssubl_overflow(lhs, rhs, &result))
+    if (!__builtin_ssubll_overflow(lhs, rhs, &result))
         return boxInt(result);
     return longSub(autoDecref(boxLong(lhs)), autoDecref(boxLong(rhs)));
 }
@@ -490,7 +490,7 @@ extern "C" Box* pow_i64_i64(i64 lhs, i64 rhs, Box* mod) {
 
 extern "C" Box* mul_i64_i64(i64 lhs, i64 rhs) {
     i64 result;
-    if (!__builtin_smull_overflow(lhs, rhs, &result))
+    if (!__builtin_smulll_overflow(lhs, rhs, &result))
         return boxInt(result);
     return longMul(autoDecref(boxLong(lhs)), autoDecref(boxLong(rhs)));
 }
@@ -1093,7 +1093,7 @@ extern "C" BoxedString* intRepr(BoxedInt* v) {
         raiseExcHelper(TypeError, "descriptor '__repr__' requires a 'int' object but received a '%s'", getTypeName(v));
 
     char buf[80];
-    int len = snprintf(buf, 80, "%ld", v->n);
+    int len = snprintf(buf, 80, "%lld", v->n);
     return static_cast<BoxedString*>(boxString(llvm::StringRef(buf, len)));
 }
 
@@ -1151,9 +1151,9 @@ extern "C" Box* intHex(BoxedInt* self) {
     int len = 0;
     bool is_negative = self->n < 0;
     if (is_negative)
-        len = snprintf(buf, sizeof(buf), "-0x%lx", std::abs(self->n));
+        len = snprintf(buf, sizeof(buf), "-0x%llx", std::abs(self->n));
     else
-        len = snprintf(buf, sizeof(buf), "0x%lx", self->n);
+        len = snprintf(buf, sizeof(buf), "0x%llx", self->n);
     return boxString(llvm::StringRef(buf, len));
 }
 
@@ -1166,9 +1166,9 @@ extern "C" Box* intOct(BoxedInt* self) {
     int len = 0;
     bool is_negative = self->n < 0;
     if (is_negative)
-        len = snprintf(buf, sizeof(buf), "-%#lo", std::abs(self->n));
+        len = snprintf(buf, sizeof(buf), "-%#llo", std::abs(self->n));
     else
-        len = snprintf(buf, sizeof(buf), "%#lo", self->n);
+        len = snprintf(buf, sizeof(buf), "%#llo", self->n);
     return boxString(llvm::StringRef(buf, len));
 }
 
@@ -1483,7 +1483,7 @@ static PyObject* int_getnewargs(BoxedInt* v) noexcept {
 
 extern "C" int PyInt_ClearFreeList() noexcept {
     PyIntObject* p;
-    PyIntBlock* list, *next;
+    PyIntBlock *list, *next;
     int i;
     int u; /* remaining unfreed ints per block */
     int freelist_size = 0;

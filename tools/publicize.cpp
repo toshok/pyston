@@ -64,16 +64,20 @@ bool makeVisible(llvm::GlobalValue* gv) {
     bool changed = false;
 
     if (linkage == llvm::GlobalValue::LinkOnceODRLinkage) {
+        printf ("1 %s\n",  gv->getName().str().c_str());
         gv->setLinkage(llvm::GlobalValue::WeakODRLinkage);
         changed = true;
     } else if (linkage == llvm::GlobalValue::LinkOnceAnyLinkage) {
+        printf ("2 %s\n",  gv->getName().str().c_str());
         gv->setLinkage(llvm::GlobalValue::WeakAnyLinkage);
         changed = true;
     } else if (linkage == llvm::GlobalValue::PrivateLinkage) {
+        printf ("3 %s\n",  gv->getName().str().c_str());
         gv->setName(gv->getParent()->getModuleIdentifier() + gv->getName());
         gv->setLinkage(llvm::GlobalValue::ExternalLinkage);
         changed = true;
     } else if (linkage == llvm::GlobalValue::InternalLinkage) {
+        printf ("4 %s\n",  gv->getName().str().c_str());
         // Not sure if this is the right linkage here:
         gv->setLinkage(llvm::GlobalValue::WeakODRLinkage);
         changed = true;
@@ -87,6 +91,7 @@ bool makeVisible(llvm::GlobalValue* gv) {
     // The only thing affected by this that I know about is __clang_call_terminate.
     llvm::GlobalValue::VisibilityTypes visibility = gv->getVisibility();
     if (visibility == llvm::GlobalValue::HiddenVisibility) {
+        printf ("5 %s\n",  gv->getName().str().c_str());
         gv->setVisibility(llvm::GlobalValue::ProtectedVisibility);
         //gv->setDLLStorageClass(llvm::GlobalValue::DLLExportStorageClass);
         std::string old_name = gv->getName();
@@ -97,6 +102,7 @@ bool makeVisible(llvm::GlobalValue* gv) {
         // If this symbol has comdat set we have to remove the comdat for the old name
         // and create a new comdat with the new name
         if (gv->hasComdat() && isa<llvm::GlobalObject>(gv)) {
+            printf ("6 %s\n",  gv->getName().str().c_str());
             llvm::Module* mod = gv->getParent();
             llvm::GlobalObject* go = cast<llvm::GlobalObject>(gv);
             llvm::Comdat* new_com = mod->getOrInsertComdat(new_name);
@@ -197,15 +203,15 @@ int main(int argc, char **argv) {
     }
 
     for (Module::iterator I = M->begin(), E = M->end(); I != E; ++I) {
-        makeVisible(I);
+//        makeVisible(I);
     }
 
     for (Module::global_iterator I = M->global_begin(), E = M->global_end(); I != E; ++I) {
-        makeVisible(I);
+//        makeVisible(I);
     }
 
     for (Module::iterator I = M->begin(), E = M->end(); I != E; ++I) {
-        updateTBAA(I);
+//        updateTBAA(I);
     }
 
     if (OutputFilename.empty())

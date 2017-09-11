@@ -18,13 +18,18 @@
 #include <atomic>
 #include <cstdint>
 #include <cstring>
-#include <ucontext.h>
 #include <vector>
 
 #include "Python.h"
 
 #include "core/common.h"
 #include "core/thread_utils.h"
+
+#ifdef linux
+#define PTHREAD_T_FMT "%ld"
+#else
+#define PTHREAD_T_FMT "%p"
+#endif
 
 namespace pyston {
 class Box;
@@ -43,7 +48,7 @@ namespace threading {
 bool threadWasStarted();
 
 // returns a thread id (currently, the pthread_t id)
-intptr_t start_thread(void* (*start_func)(Box*, Box*, Box*), Box* arg1, Box* arg2, Box* arg3);
+uintptr_t start_thread(void* (*start_func)(Box*, Box*, Box*), Box* arg1, Box* arg2, Box* arg3);
 
 // Hooks to tell the threading machinery about the main thread:
 void registerMainThread();

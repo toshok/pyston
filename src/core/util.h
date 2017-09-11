@@ -17,6 +17,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <functional>
 #include <sys/time.h>
 
 #include "core/common.h"

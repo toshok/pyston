@@ -28,8 +28,8 @@
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/Object/ObjectFile.h"
 
-#include "asm_writing/types.h"
 #include "analysis/scoping_analysis.h"
+#include "asm_writing/types.h"
 #include "codegen/ast_interpreter.h"
 #include "codegen/codegen.h"
 #include "codegen/compvars.h"
@@ -39,8 +39,8 @@
 #include "core/cfg.h"
 #include "core/util.h"
 #include "runtime/ctxswitching.h"
-#include "runtime/objmodel.h"
 #include "runtime/generator.h"
+#include "runtime/objmodel.h"
 #include "runtime/types.h"
 
 
@@ -232,8 +232,9 @@ public:
 // TODO this should be the Python name, not the C name:
 #if LLVMREV < 208921
             llvm::DILineInfoTable lines = Context->getLineInfoForAddressRange(
-                func_addr, Size, llvm::DILineInfoSpecifier::FunctionName | llvm::DILineInfoSpecifier::FileLineInfo
-                                     | llvm::DILineInfoSpecifier::AbsoluteFilePath);
+                func_addr, Size,
+                llvm::DILineInfoSpecifier::FunctionName | llvm::DILineInfoSpecifier::FileLineInfo
+                    | llvm::DILineInfoSpecifier::AbsoluteFilePath);
 #else
             llvm::DILineInfoTable lines = Context->getLineInfoForAddressRange(
                 func_addr, Size,
@@ -242,7 +243,7 @@ public:
 #endif
             if (VERBOSITY() >= 3) {
                 for (int i = 0; i < lines.size(); i++) {
-                    printf("%s:%d, %s: %lx\n", lines[i].second.FileName.c_str(), lines[i].second.Line,
+                    printf("%s:%d, %s: %llx\n", lines[i].second.FileName.c_str(), lines[i].second.Line,
                            lines[i].second.FunctionName.c_str(), lines[i].first);
                 }
             }
@@ -272,7 +273,7 @@ public:
                 eh_frame_size = sec.getSize();
 
                 if (VERBOSITY() >= 2)
-                    printf("eh_frame: %lx %lx\n", eh_frame_addr, eh_frame_size);
+                    printf("eh_frame: %llx %llx\n", eh_frame_addr, eh_frame_size);
                 found_eh_frame = true;
             } else if (name == ".text") {
                 assert(!found_text);
@@ -280,7 +281,7 @@ public:
                 text_size = sec.getSize();
 
                 if (VERBOSITY() >= 2)
-                    printf("text: %lx %lx\n", text_addr, text_size);
+                    printf("text: %llx %llx\n", text_addr, text_size);
                 found_text = true;
             }
         }
@@ -850,8 +851,7 @@ FrameInfo* getPythonFrameInfo(int depth) {
     return frame_info;
 }
 
-PythonFrameIterator::~PythonFrameIterator() {
-}
+PythonFrameIterator::~PythonFrameIterator() {}
 
 PythonFrameIterator::PythonFrameIterator(PythonFrameIterator&& rhs) {
     std::swap(this->impl, rhs.impl);
@@ -1187,6 +1187,5 @@ llvm::JITEventListener* makeTracebacksListener() {
     return new TracebacksEventListener();
 }
 
-void setupUnwinding() {
-}
+void setupUnwinding() {}
 }

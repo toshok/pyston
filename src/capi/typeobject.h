@@ -58,7 +58,7 @@ int compatible_for_assignment(PyTypeObject* oldto, PyTypeObject* newto, const ch
 class GetattrRewriteArgs;
 template <ExceptionStyle S, Rewritable rewritable>
 Box* slotTpGetattrHookInternal(Box* self, BoxedString* attr, GetattrRewriteArgs* rewrite_args, bool for_call,
-                               BORROWED(Box**) bind_obj_out, RewriterVar** r_bind_obj_out) noexcept(S == CAPI);
+                               BORROWED(Box**) bind_obj_out, RewriterVar** r_bind_obj_out) noexcept(S != CXX);
 
 // Set a class's tp_call to this to have calls to tp_call (and __call__) proxy to tpp_call
 Box* proxyToTppCall(Box* self, Box* args, Box* kw) noexcept;

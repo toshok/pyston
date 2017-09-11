@@ -22,7 +22,12 @@
 #include "core/common.h"
 
 #ifdef __APPLE__
-#include <libkern/OSAtomic.h>
+  #if false
+     /* TODO(toshok) this should be used pre-10.12 */
+     #include <libkern/OSAtomic.h>
+  #else
+    #include <os/lock.h>
+  #endif
 #endif
 
 namespace pyston {
@@ -128,44 +133,75 @@ public:
     PthreadRWLockWrite* asWrite() { return reinterpret_cast<PthreadRWLockWrite*>(this); }
 };
 
+#ifdef __APPLE__
+
+#if false
+/* TODO(toshok) this should be used pre-10.12 */
 class PthreadSpinLock {
 private:
-#ifdef __APPLE__
     OSSpinLock spinlock;
-#else
-    pthread_spinlock_t spinlock;
-#endif
 
 public:
     PthreadSpinLock() :
-#ifdef __APPLE__
         spinlock(0)
-#endif
     {
-#ifndef __APPLE__
-        pthread_spin_init(&spinlock, false);
-#endif
     }
 
     void lock() {
-#ifdef __APPLE__
         OSSpinLockLock(&spinlock);
-#else
-	pthread_spin_lock(&spinlock);
-#endif
     }
     void unlock() {
-#ifdef __APPLE__
         OSSpinLockUnlock(&spinlock);
-#else
-	pthread_spin_unlock(&spinlock);
-#endif
     }
 
     PthreadSpinLock* asRead() { return this; }
     PthreadSpinLock* asWrite() { return this; }
 };
+#else
+class PthreadSpinLock {
+private:
+    os_unfair_lock spinlock;
 
+public:
+    PthreadSpinLock()
+      : spinlock(OS_UNFAIR_LOCK_INIT)
+    {
+    }
+
+    void lock() {
+        os_unfair_lock_lock(&spinlock);
+    }
+    void unlock() {
+        os_unfair_lock_unlock(&spinlock);
+    }
+
+    PthreadSpinLock* asRead() { return this; }
+    PthreadSpinLock* asWrite() { return this; }
+};
+#endif
+
+#else
+// pthread implementation
+class PthreadSpinLock {
+private:
+    pthread_spinlock_t spinlock;
+
+public:
+    PthreadSpinLock() {
+        pthread_spin_init(&spinlock, false);
+    }
+
+    void lock() {
+    	pthread_spin_lock(&spinlock);
+    }
+    void unlock() {
+    	pthread_spin_unlock(&spinlock);
+    }
+
+    PthreadSpinLock* asRead() { return this; }
+    PthreadSpinLock* asWrite() { return this; }
+};
+#endif
 
 namespace impl {
 // From http://stackoverflow.com/questions/7858817/unpacking-a-tuple-to-call-a-matching-function-pointer
