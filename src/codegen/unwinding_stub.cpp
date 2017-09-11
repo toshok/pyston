@@ -52,8 +52,15 @@ void removeDecrefInfoEntry(uint64_t ip) {
     abort();
 }
 
+
+class TracebacksEventListener : public llvm::JITEventListener {
+public:
+    virtual void NotifyObjectEmitted(const llvm::object::ObjectFile& Obj,
+                                     const llvm::RuntimeDyld::LoadedObjectInfo& L) {}
+};
+
 llvm::JITEventListener* makeTracebacksListener() {
-    abort();
+    return new TracebacksEventListener();
 }
 
 ExcInfo* getFrameExcInfo() {

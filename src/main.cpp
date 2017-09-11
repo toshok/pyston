@@ -51,8 +51,7 @@
 
 
 #ifndef GITREV
-#define GITREV "FIXME(toshok)"
-//#error
+#error
 #endif
 
 namespace pyston {

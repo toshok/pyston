@@ -114,10 +114,8 @@ foreach(BC_SRC ${BC_INLINE_SRCS})
 
   # keep track of every bitcode and object file we created
   list(APPEND BC_FILES ${BC_SRC_BASENAME}.pub.bc)
-  #list(APPEND BC_OBJS ${BC_SRC_BASENAME}.o)
+  list(APPEND BC_OBJS ${BC_SRC_BASENAME}.o)
 endforeach(BC_SRC)
-
-#set(LD_BINARY_FLAG "-b binary")
 
 # link all the bitcode files together
 add_custom_command(OUTPUT stdlib.unopt.bc
@@ -132,8 +130,8 @@ add_custom_command(OUTPUT stdlib${STDLIB_SUFFIX}.bc
                    COMMENT "Optimizing stdlib.unopt.bc -> stdlib.bc")
 
 add_custom_command(OUTPUT stdlib.bc.o
-                   COMMAND ${CMAKE_LINKER} -r ${LD_ARCH_FLAG} ${LD_BINARY_FLAG} stdlib${STDLIB_SUFFIX}.bc -o ${CMAKE_CURRENT_BINARY_DIR}/stdlib.bc.o
-                   DEPENDS stdlib${STDLIB_SUFFIX}.bc
+                   COMMAND python ${CMAKE_SOURCE_DIR}/tools/file_to_data_segment.py stdlib${STDLIB_SUFFIX}.bc ${CMAKE_CURRENT_BINARY_DIR}/stdlib.bc.o
+                   DEPENDS stdlib${STDLIB_SUFFIX}.bc ${CMAKE_SOURCE_DIR}/tools/file_to_data_segment.py
                    COMMENT "Embedding stdlib${STDLIB_SUFFIX}.bc -> stdlib.bc.o")
 
 if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
@@ -143,12 +141,11 @@ if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
                      COMMENT "Stripping stdlib.bc -> stdlib.stripped.bc")
 
   add_custom_command(OUTPUT stdlib.stripped.bc.o
-                     COMMAND ${CMAKE_LINKER} -r ${LD_ARCH_FLAG} ${LD_BINARY_FLAG} stdlib.stripped.bc -o ${CMAKE_CURRENT_BINARY_DIR}/stdlib.stripped.bc.o
-                     DEPENDS stdlib.stripped.bc
+                     COMMAND python ${CMAKE_SOURCE_DIR}/tools/file_to_data_segment.py stdlib.stripped.bc ${CMAKE_CURRENT_BINARY_DIR}/stdlib.stripped.bc.o
+                     DEPENDS stdlib.stripped.bc ${CMAKE_SOURCE_DIR}/tools/file_to_data_segment.py
                      COMMENT "Embedding stdlib.stripped.bc -> stdlib.stripped.bc.o")
-  #add_library(stdlib stdlib.stripped.bc.o stdlib.bc.o ${BC_OBJS})
-  add_library(stdlib stdlib.bc.o ${BC_OBJS})
-  else()
+  add_library(stdlib stdlib.stripped.bc.o stdlib.bc.o ${BC_OBJS})
+else()
   add_library(stdlib stdlib.bc.o ${BC_OBJS})
 endif()
 set_property(TARGET stdlib PROPERTY LINKER_LANGUAGE C)

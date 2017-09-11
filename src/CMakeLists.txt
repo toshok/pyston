@@ -5,7 +5,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fstrict-aliasing -enabl
 
 
 execute_process(COMMAND git rev-parse HEAD WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} OUTPUT_VARIABLE GITREV OUTPUT_STRIP_TRAILING_WHITESPACE)
-set_source_files_properties(jit.cpp PROPERTIES COMPILE_DEFINITIONS "GITREV=${GITREV}")
+set_source_files_properties(main.cpp PROPERTIES COMPILE_DEFINITIONS "GITREV=${GITREV}")
 
 include_directories(/usr/local/include)
 include_directories(${CMAKE_BINARY_DIR})

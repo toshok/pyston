@@ -1183,6 +1183,99 @@ extern "C" void exit(int code) {
 }
 #endif
 
+class TracebacksEventListener : public llvm::JITEventListener {
+public:
+    virtual void NotifyObjectEmitted(const llvm::object::ObjectFile& Obj,
+                                     const llvm::RuntimeDyld::LoadedObjectInfo& L) {
+
+        std::unique_ptr<llvm::DIContext> Context(llvm::DIContext::getDWARFContext(Obj));
+
+        assert(g.cur_cf);
+
+        uint64_t func_addr = 0; // remains 0 until we find a function
+
+        // Search through the symbols to find the function that got JIT'ed.
+        // (We only JIT one function at a time.)
+        for (const auto& sym : Obj.symbols()) {
+            llvm::object::SymbolRef::Type SymType;
+            if (sym.getType(SymType) || SymType != llvm::object::SymbolRef::ST_Function)
+                continue;
+
+            llvm::StringRef Name;
+            uint64_t Size;
+            if (sym.getName(Name) || sym.getSize(Size))
+                continue;
+
+            // Found a function!
+            assert(!func_addr);
+            func_addr = L.getSymbolLoadAddress(Name);
+            assert(func_addr);
+
+// TODO this should be the Python name, not the C name:
+#if LLVMREV < 208921
+            llvm::DILineInfoTable lines = Context->getLineInfoForAddressRange(
+                func_addr, Size,
+                llvm::DILineInfoSpecifier::FunctionName | llvm::DILineInfoSpecifier::FileLineInfo
+                    | llvm::DILineInfoSpecifier::AbsoluteFilePath);
+#else
+            llvm::DILineInfoTable lines = Context->getLineInfoForAddressRange(
+                func_addr, Size,
+                llvm::DILineInfoSpecifier(llvm::DILineInfoSpecifier::FileLineInfoKind::AbsoluteFilePath,
+                                          llvm::DILineInfoSpecifier::FunctionNameKind::LinkageName));
+#endif
+            if (VERBOSITY() >= 3) {
+                for (int i = 0; i < lines.size(); i++) {
+                    printf("%s:%d, %s: %llx\n", lines[i].second.FileName.c_str(), lines[i].second.Line,
+                           lines[i].second.FunctionName.c_str(), lines[i].first);
+                }
+            }
+
+            assert(g.cur_cf->code_start == 0);
+            g.cur_cf->code_start = func_addr;
+            g.cur_cf->code_size = Size;
+            cf_registry.registerCF(g.cur_cf);
+        }
+
+        assert(func_addr);
+
+        // Libunwind support:
+        bool found_text = false, found_eh_frame = false;
+        uint64_t text_addr = -1, text_size = -1;
+        uint64_t eh_frame_addr = -1, eh_frame_size = -1;
+
+        for (const auto& sec : Obj.sections()) {
+            llvm::StringRef name;
+            llvm_error_code code = sec.getName(name);
+            assert(!code);
+
+            uint64_t addr, size;
+            if (name == ".eh_frame") {
+                assert(!found_eh_frame);
+                eh_frame_addr = L.getSectionLoadAddress(name);
+                eh_frame_size = sec.getSize();
+
+                if (VERBOSITY() >= 2)
+                    printf("eh_frame: %llx %llx\n", eh_frame_addr, eh_frame_size);
+                found_eh_frame = true;
+            } else if (name == ".text") {
+                assert(!found_text);
+                text_addr = L.getSectionLoadAddress(name);
+                text_size = sec.getSize();
+
+                if (VERBOSITY() >= 2)
+                    printf("text: %llx %llx\n", text_addr, text_size);
+                found_text = true;
+            }
+        }
+
+        assert(found_text);
+        assert(found_eh_frame);
+        assert(text_addr == func_addr);
+
+        registerDynamicEhFrame(text_addr, text_size, eh_frame_addr, eh_frame_size);
+    }
+};
+
 llvm::JITEventListener* makeTracebacksListener() {
     return new TracebacksEventListener();
 }
