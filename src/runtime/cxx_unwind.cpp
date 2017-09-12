@@ -754,8 +754,25 @@ bool isUnwinding() {
     return num_uncaught_exceptions > 0;
 }
 
+static llvm::StringMap<uint64_t> cxx_unwind_syms;
 uint64_t getCXXUnwindSymbolAddress(llvm::StringRef sym) {
-    abort();
+#if PYSTON_CUSTOM_UNWINDER
+    if (unlikely(cxx_unwind_syms.empty())) {
+        cxx_unwind_syms["_Unwind_Resume"] = (uint64_t)_Unwind_Resume;
+        cxx_unwind_syms["__gxx_personality_v0"] = (uint64_t)__gxx_personality_v0;
+        cxx_unwind_syms["__cxa_allocate_exception"] = (uint64_t)__cxxabiv1::__cxa_allocate_exception;
+        cxx_unwind_syms["__cxa_begin_catch"] = (uint64_t)__cxxabiv1::__cxa_begin_catch;
+        cxx_unwind_syms["__cxa_end_catch"] = (uint64_t)__cxxabiv1::__cxa_end_catch;
+        cxx_unwind_syms["__cxa_get_exception_ptr"] = (uint64_t)__cxxabiv1::__cxa_get_exception_ptr;
+        cxx_unwind_syms["__cxa_rethrow"] = (uint64_t)__cxxabiv1::__cxa_rethrow;
+        cxx_unwind_syms["__cxa_throw"] = (uint64_t)__cxxabiv1::__cxa_throw;
+    }
+
+    auto&& it = cxx_unwind_syms.find(sym);
+    if (it != cxx_unwind_syms.end())
+        return it->second;
+#endif
+    return 0;
 }
 }
 #endif
