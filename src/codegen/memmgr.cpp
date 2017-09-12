@@ -83,7 +83,7 @@ uint8_t* PystonMemoryManager::allocateDataSection(uintptr_t Size, unsigned Align
 
 uint8_t* PystonMemoryManager::allocateCodeSection(uintptr_t Size, unsigned Alignment, unsigned SectionID,
                                                   StringRef SectionName) {
-    // printf("allocating code section: %ld %d %d %s\n", Size, Alignment, SectionID, SectionName.data());
+    printf("allocating code section: %ld %d %d %s\n", Size, Alignment, SectionID, SectionName.data());
     return allocateSection(CodeMem, Size, Alignment, SectionName);
 }
 

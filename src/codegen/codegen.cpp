@@ -65,8 +65,7 @@ SourceInfo::SourceInfo(BoxedModule* m, ScopingResults scoping, FutureFlags futur
       cfg(NULL),
       future_flags(future_flags),
       is_generator(is_generator),
-      ast_type(ast_type) {
-}
+      ast_type(ast_type) {}
 
 SourceInfo::~SourceInfo() {
     delete cfg;
@@ -184,32 +183,36 @@ public:
 
         llvm_error_code code;
         for (const auto& sym : Obj.symbols()) {
-            llvm::object::section_iterator section(Obj.section_end());
-            code = sym.getSection(section);
-            assert(!code);
-            bool is_text;
-#if LLVMREV < 219314
-            code = section->isText(is_text);
-            assert(!code);
-#else
-            is_text = section->isText();
-#endif
-            if (!is_text)
-                continue;
-
             llvm::StringRef name;
             code = sym.getName(name);
             assert(!code);
+
+            llvm::object::SymbolRef::Type type;
+
+            code = sym.getType(type);
+            assert(!code);
+
+            /*
+            if (type != llvm::object::SymbolRef::ST_Function) {
+                printf("not a function %d\n", type);
+                continue;
+            }
+            */
+
             uint64_t size;
             code = sym.getSize(size);
             assert(!code);
 
+
             if (name == ".text")
                 continue;
 
-
             uint64_t sym_addr = L.getSymbolLoadAddress(name);
-            assert(sym_addr);
+            printf("%s: addr %llu, type %d, size %llu\n", name.data(), sym_addr, type, size);
+            if (!sym_addr) {
+                continue;
+            }
+            //         assert(sym_addr);
 
             g.func_addr_registry.registerFunction(name.data(), (void*)sym_addr, size, NULL);
         }
